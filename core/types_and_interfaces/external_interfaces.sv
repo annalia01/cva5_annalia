@@ -177,50 +177,134 @@ typedef struct packed {
 
 typedef struct packed {
     logic [31:0] dat_r;
-    logic        ack;
-    logic        err;
+    logic ack;
+    logic err;
 } slave_wishbone_interface_output;
 
-interface mem_interface;
+typedef struct packed {
+    logic        ack;
+    logic        rvalid;
+    logic [31:0] rdata;
+} master_ro_mem_interface_input;
+
+typedef struct packed {
     logic request;
-    logic[31:2] addr;
-    logic[4:0] rlen; //Nobody truly needs requests > 32 words
+    logic [31:2] addr;
+    logic  [4:0] rlen;
+} master_ro_mem_interface_output;
+
+typedef struct packed {
     logic ack;
-
     logic rvalid;
-    logic[31:0] rdata;
-    logic[1:0] rid;
-    
-    logic rnw;
-    logic rmw;
-    logic[3:0] wbe;
-    logic[31:0] wdata;
+    logic [31:0] rdata;
+} slave_ro_mem_interface_input;
 
-    logic inv;
-    logic[31:2] inv_addr;
-    logic write_outstanding;
+typedef struct packed {
+    logic        ack;
+    logic        rvalid;
+    logic [31:0] rdata;
+} slave_ro_mem_interface_output;
 
-    logic[1:0] id;
+typedef struct packed {
+    logic        ack;
+    logic        rvalid;
+    logic [31:0] rdata;
+    logic        inv;
+    logic [31:2] inv_addr;
+    logic        write_outstanding;
+} master_rw_mem_interface_input;
 
-    modport ro_master (output request, addr, rlen, input ack, rvalid, rdata);
-    modport ro_slave (input request, addr, rlen, output ack, rvalid, rdata);
-    modport rw_master (output request, addr, rlen, rnw, rmw, wbe, wdata, input ack, rvalid, rdata, inv, inv_addr, write_outstanding);
-    modport rw_slave (input request, addr, rlen, rnw, rmw, wbe, wdata, output ack, rvalid, rdata, inv, inv_addr, write_outstanding);
-    modport mem_master (output request, addr, rlen, rnw, rmw, wbe, wdata, id, input ack, rvalid, rdata, rid, inv, inv_addr, write_outstanding);
-    modport mem_slave (input request, addr, rlen, rnw, rmw, wbe, wdata, id, output ack, rvalid, rdata, rid, inv, inv_addr, write_outstanding);
+typedef struct packed {
+    logic        request;
+    logic [31:2] addr;
+    logic  [4:0] rlen;
+    logic        rnw;
+    logic        rmw;
+    logic  [3:0] wbe;
+    logic [31:0] wdata;
+} master_rw_mem_interface_output;
 
-endinterface
+typedef struct packed {
+    logic        request;
+    logic [31:2] addr;
+    logic  [4:0] rlen;
+    logic        rnw;
+    logic        rmw;
+    logic  [3:0] wbe;
+    logic [31:0] wdata;
+} slave_rw_mem_interface_input;
+
+typedef struct packed {
+    logic        ack;
+    logic        rvalid;
+    logic [31:0] rdata;
+    logic        inv;
+    logic [31:2] inv_addr;
+    logic        write_outstanding;
+} slave_rw_mem_interface_output;
+
+typedef struct packed {
+    logic        ack;
+    logic        rvalid;
+    logic [31:0] rdata;
+    logic  [1:0] rid;
+    logic        inv;
+    logic [31:2] inv_addr;
+    logic        write_outstanding;
+} master_mem_mem_interface_input;
+
+typedef struct packed {
+    logic        request;
+    logic [31:2] addr;
+    logic  [4:0] rlen;
+    logic        rnw;
+    logic        rmw;
+    logic  [3:0] wbe;
+    logic [31:0] wdata;
+    logic  [1:0] id;
+} master_mem_mem_interface_output;
+
+typedef struct packed {
+    logic        request;
+    logic [31:2] addr;
+    logic  [4:0] rlen;
+    logic        rnw;
+    logic        rmw;
+    logic  [3:0] wbe;
+    logic [31:0] wdata;
+    logic  [1:0] id;
+} slave_mem_mem_interface_input;
+
+typedef struct packed {
+    logic        ack;
+    logic        rvalid;
+    logic [31:0] rdata;
+    logic  [1:0] rid;
+    logic        inv;
+    logic [31:2] inv_addr;
+    logic        write_outstanding;
+} slave_mem_mem_interface_output;
+
+typedef struct packed {
+    logic [31:0] data_out;
+} master_local_memory_interface_input;
+
+typedef struct packed {
+    logic [29:0] addr;
+    logic        en;
+    logic  [3:0] be;
+    logic [31:0] data_in;
+} master_local_memory_interface_output;
+
+typedef struct packed {
+    logic [29:0] addr;
+    logic        en;
+    logic  [3:0] be;
+    logic [31:0] data_in;
+} slave_local_memory_interface_input;
+
+typedef struct packed {
+    logic [31:0] data_out;
+} slave_local_memory_interface_output;
 
 
-
-interface local_memory_interface;
-    logic[29:0] addr;
-    logic en;
-    logic[3:0] be;
-    logic[31:0] data_in;
-    logic[31:0] data_out;
-
-    modport slave (input addr, en, be, data_in, output data_out);
-    modport master (output addr, en, be, data_in, input data_out);
-
-endinterface
