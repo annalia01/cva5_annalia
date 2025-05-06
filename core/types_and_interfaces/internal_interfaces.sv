@@ -19,225 +19,302 @@
  * Author(s):
  *             Eric Matthews <ematthew@sfu.ca>
  */
+import cva5_types::*;
+import csr_types::*;
+import riscv_types::*;
 
-interface branch_predictor_interface;
-    import cva5_types::*;
-
-    //Fetch signals
+typedef struct packed {
     logic [31:0] if_pc;
-    id_t if_id;
-    logic new_mem_request;
+    id_t         if_id;
+    logic        new_mem_request;
     logic [31:0] next_pc;
+    id_t         pc_id;
+    logic        pc_id_assigned;
+} branch_predictor_branch_predictor_input;
 
-    id_t pc_id;
-    logic pc_id_assigned;
-    
-    //Branch Predictor 
+typedef struct packed {
     logic [31:0] branch_flush_pc;
     logic [31:0] predicted_pc;
-    logic use_prediction;
-    logic is_return;
-    logic is_call;
-    logic is_branch;
+    logic        use_prediction;
+    logic        is_return;
+    logic        is_call;
+    logic        is_branch;
+} branch_predictor_branch_predictor_output;
 
-    modport branch_predictor (
-        input if_pc, if_id, new_mem_request, next_pc, pc_id, pc_id_assigned,
-        output branch_flush_pc, predicted_pc, use_prediction, is_return, is_call, is_branch
-    );
-    modport fetch (
-        input branch_flush_pc, predicted_pc, use_prediction, is_return, is_call, is_branch,
-        output if_pc, if_id, new_mem_request, next_pc, pc_id, pc_id_assigned
-     );
+typedef struct packed {
+    logic [31:0] branch_flush_pc;
+    logic [31:0] predicted_pc;
+    logic        use_prediction;
+    logic        is_return;
+    logic        is_call;
+    logic        is_branch;
+} branch_predictor_fetch_input;
 
-endinterface
+typedef struct packed {
+    logic [31:0] if_pc;
+    id_t         if_id;
+    logic        new_mem_request;
+    logic [31:0] next_pc;
+    id_t         pc_id;
+    logic        pc_id_assigned;
+} branch_predictor_fetch_output;
 
-interface unit_issue_interface;
-    import cva5_types::*;
+typedef struct packed {
+    logic        ready;
+} decode_unit_issue_interface_input;
 
-    logic possible_issue;
-    logic new_request;
-    id_t id;
+typedef struct packed {
+    logic        possible_issue;
+    logic        new_request;
+    id_t         id;
+} decode_unit_issue_interface_output;
 
-    logic ready;
+typedef struct packed {
+    logic        possible_issue;
+    logic        new_request;
+    id_t         id;
+} unit_unit_issue_interface_input;
 
-    modport decode (input ready, output possible_issue, new_request, id);
-    modport unit (output ready, input possible_issue, new_request, id);
-endinterface
+typedef struct packed {
+    logic        ready;
+} unit_unit_issue_interface_output;
 
-interface unit_writeback_interface #(parameter DATA_WIDTH = 32);
-    import cva5_types::*;
+parameter DATA_WIDTH = 32;
 
-    //Handshaking
+typedef struct packed {
     logic ack;
-    logic done;
+} unit_unit_writeback_interface_input;
 
+typedef struct packed {
+    logic done;
     id_t id;
     logic [DATA_WIDTH-1:0] rd;
+} unit_unit_writeback_interface_output;
 
-    modport unit (input ack, output done, id, rd);
-    modport wb (output ack, input done, id, rd);
-endinterface
+typedef struct packed {
+    logic done;
+    id_t id;
+    logic [DATA_WIDTH-1:0] rd;
+} wb_unit_writeback_interface_input;
 
-interface ras_interface;
+typedef struct packed {
+    logic ack;
+} wb_unit_writeback_interface_output;
+
+typedef struct packed {
+    logic branch_retired;
+} branch_predictor_ras_interface_output;
+
+typedef struct packed {
     logic push;
     logic pop;
+    logic [31:0] new_addr;
     logic branch_fetched;
     logic branch_retired;
+} self_ras_interface_input;
 
-    logic [31:0] new_addr;
+typedef struct packed {
     logic [31:0] addr;
+} self_ras_interface_output;
 
-    modport branch_predictor (output branch_retired);
-    modport self (input push, pop, new_addr, branch_fetched, branch_retired, output addr);
-    modport fetch (input addr, output pop, push, new_addr, branch_fetched);
-endinterface
+typedef struct packed {
+    logic [31:0] addr;
+} fetch_ras_interface_input;
 
+typedef struct packed {
+    logic pop;
+    logic push;
+    logic [31:0] new_addr;
+    logic branch_fetched;
+} fetch_ras_interface_output;
 
-interface exception_interface;
-    import riscv_types::*;
-    import cva5_types::*;
-
+typedef struct packed {
     logic valid;
     logic possible;
-    
     exception_code_t code;
     logic [31:0] tval;
     logic [31:0] pc;
     logic discard;
-    
-    modport unit (output valid, possible, code, tval, pc, discard);
-    modport econtrol (input valid, possible, code, tval, pc, discard);
-endinterface
+} unit_exception_output;
 
-interface fifo_interface #(parameter type DATA_TYPE = logic);
+typedef struct packed {
+    logic valid;
+    logic possible;
+    exception_code_t code;
+    logic [31:0] tval;
+    logic [31:0] pc;
+    logic discard;
+} econtrol_exception_interface_input;
+
+typedef struct packed {
+    logic full;
+} enqueue_fifo_interface_input;
+
+typedef struct packed {
+    DATA_TYPE data_in;
+    logic push;
+    logic potential_push;
+} enqueue_fifo_interface_output;
+
+typedef struct packed {
+    logic valid;
+    DATA_TYPE data_out;
+} dequeue_fifo_interface_input;
+
+typedef struct packed {
+    logic pop;
+} dequeue_fifo_interface_output;
+
+typedef struct packed {
     logic push;
     logic pop;
     DATA_TYPE data_in;
+    logic potential_push;
+} structure_fifo_interface_input;
+
+typedef struct packed {
     DATA_TYPE data_out;
     logic valid;
     logic full;
-    logic potential_push;
-    modport enqueue (input full, output data_in, push, potential_push);
-    modport dequeue (input valid, data_out, output pop);
-    modport structure(input push, pop, data_in, potential_push, output data_out, valid, full);
-endinterface
+} structure_fifo_interface_output;
 
-interface mmu_interface;
-    import csr_types::*;
-    
-    //From TLB
+typedef struct packed {
+    logic [31:0] virtual_address;
     logic request;
     logic execute;
     logic rnw;
-    logic [31:0] virtual_address;
+    logic [21:0] satp_ppn;
+    logic mxr;
+    logic sum;
+    privilege_t privilege;
+} mmu_mmu_interface_input;
 
-    //TLB response
+typedef struct packed {
     logic write_entry;
     logic superpage;
     pte_perms_t perms;
     logic [19:0] upper_physical_address;
     logic is_fault;
+} mmu_mmu_interface_output;
 
-    //From CSR
-    logic [21:0] satp_ppn;
-    logic mxr; //Make eXecutable Readable
-    logic sum; //permit Supervisor User Memory access
+typedef struct packed {
+    logic write_entry;
+    logic superpage;
+    pte_perms_t perms;
+    logic [19:0] upper_physical_address;
+    logic is_fault;
+    logic mxr;
+    logic sum;
     privilege_t privilege;
+} tlb_mmu_interface_input;
 
-    modport mmu (input virtual_address, request, execute, rnw, satp_ppn, mxr, sum, privilege, output write_entry, superpage, perms, upper_physical_address, is_fault);
-    modport tlb (input write_entry, superpage, perms, upper_physical_address, is_fault, mxr, sum, privilege, output request, virtual_address, execute, rnw);
-    modport csr (output satp_ppn, mxr, sum, privilege);
+typedef struct packed {
+    logic request;
+    logic [31:0] virtual_address;
+    logic execute;
+    logic rnw;
+} tlb_mmu_interface_output;
 
-endinterface
+typedef struct packed {
+    logic [21:0] satp_ppn;
+    logic mxr;
+    logic sum;
+    privilege_t privilege;
+} csr_mmu_interface_output;
 
-interface tlb_interface;
-    //Handshaking
-    logic ready;
+typedef struct packed {
     logic new_request;
-    logic done;
-
-    //TLB Inputs
     logic [31:0] virtual_address;
     logic rnw;
+} tlb_tlb_interface_input;
 
-    //TLB Outputs
+typedef struct packed {
+    logic ready;
+    logic done;
     logic is_fault;
     logic [31:0] physical_address;
+} tlb_tlb_interface_output;
 
-    modport tlb (
-        input new_request, virtual_address, rnw,
-        output ready, done, is_fault, physical_address
-    );
-    modport requester  (
-        output new_request, virtual_address, rnw,
-        input ready, done, is_fault, physical_address
-    );
-endinterface
+typedef struct packed {
+    logic new_request;
+    logic [31:0] virtual_address;
+    logic rnw;
+} requester_tlb_interface_output;
 
-interface load_store_queue_interface;
-    import riscv_types::*;
-    import cva5_types::*;
+typedef struct packed {
+    logic ready;
+    logic done;
+    logic is_fault;
+    logic [31:0] physical_address;
+} requester_tlb_interface_input;
 
-    //Issue inputs
+typedef struct packed {
     lsq_entry_t data_in;
     logic potential_push;
     logic push;
     logic load_pop;
     logic store_pop;
-
-    //Address translation
     logic addr_push;
     lsq_addr_entry_t addr_data_in;
+} ls_load_store_queue_interface_output;
 
-    //LSQ outputs
+typedef struct packed {
+    logic full;
     data_access_shared_inputs_t load_data_out;
     data_access_shared_inputs_t store_data_out;
-
     logic load_valid;
     logic store_valid;
-
-    logic full;
-
-    //LSQ status
     logic sq_empty;
     logic empty;
+} ls_load_store_queue_interface_input;
 
-    modport queue (
-        input data_in, potential_push, push, addr_push, addr_data_in, load_pop, store_pop, 
-        output full, load_data_out, store_data_out, load_valid, store_valid, sq_empty, empty
-    );
-    modport ls (
-        output data_in, potential_push, push, addr_push, addr_data_in, load_pop, store_pop,
-        input full, load_data_out, store_data_out, load_valid, store_valid, sq_empty, empty
-    );
-endinterface
+typedef struct packed {
+    lsq_entry_t data_in;
+    logic potential_push;
+    logic push;
+    logic load_pop;
+    logic store_pop;
+    logic addr_push;
+    lsq_addr_entry_t addr_data_in;
+} queue_load_store_queue_interface_output;
 
+typedef struct packed {
+    logic full;
+    data_access_shared_inputs_t load_data_out;
+    data_access_shared_inputs_t store_data_out;
+    logic load_valid;
+    logic store_valid;
+    logic sq_empty;
+    logic empty;
+} queue_load_store_queue_interface_input;
 
-interface store_queue_interface;
-    import riscv_types::*;
-    import cva5_types::*;
-
-    //Issue inputs
+typedef struct packed {
     lsq_entry_t data_in;
     logic push;
     logic pop;
+} ls_store_queue_interface_output;
 
+typedef struct packed {
+    logic full;
     sq_entry_t data_out;
     logic valid;
-    logic full;
-
-    //SQ status
     logic empty;
+} ls_store_queue_interface_input;
 
-    modport queue (
-        input data_in, push, pop,
-        output full, data_out, valid, empty
-    );
-    modport ls (
-        output data_in, push, pop,
-        input full, data_out, valid, empty
-    );
-endinterface
+typedef struct packed {
+    lsq_entry_t data_in;
+    logic push;
+    logic pop;
+} queue_store_queue_interface_output;
+
+typedef struct packed {
+    logic full;
+    sq_entry_t data_out;
+    logic valid;
+    logic empty;
+} queue_store_queue_interface_input;
+
+
 
 interface cache_functions_interface #(parameter int TAG_W = 8, parameter int LINE_W = 4, parameter int SUB_LINE_W = 2);
 
