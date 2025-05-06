@@ -20,10 +20,9 @@
  *             Eric Matthews <ematthew@sfu.ca>
  */
 
-interface axi_interface;
     import cva5_config::*;
 
-    logic arready;
+typedef struct packed {
     logic arvalid;
     logic [31:0] araddr;
     logic [7:0] arlen;
@@ -33,17 +32,8 @@ interface axi_interface;
     logic [5:0] arid;
     logic arlock;
 
-    //read data
     logic rready;
-    logic rvalid;
-    logic [31:0] rdata;
-    logic [1:0] rresp;
-    logic rlast;
-    logic [5:0] rid;
 
-    //Write channel
-    //write address
-    logic awready;
     logic awvalid;
     logic [31:0] awaddr;
     logic [7:0] awlen;
@@ -53,55 +43,111 @@ interface axi_interface;
     logic [5:0] awid;
     logic awlock;
 
-    //write data
-    logic wready;
     logic wvalid;
     logic [31:0] wdata;
     logic [3:0] wstrb;
     logic wlast;
 
-    //write response
     logic bready;
+} master_axi_interface_output;
+
+typedef struct packed {
+    logic arready;
+
+    logic rvalid;
+    logic [31:0] rdata;
+    logic [1:0] rresp;
+    logic rlast;
+    logic [5:0] rid;
+
+    logic awready;
+    logic wready;
+
     logic bvalid;
     logic [1:0] bresp;
     logic [5:0] bid;
+} master_axi_interface_input;
 
-    modport master (input arready, rvalid, rdata, rresp, rlast, rid, awready, wready, bvalid, bresp, bid,
-            output arvalid, araddr, arlen, arsize, arburst, arcache, arlock, arid, rready, awvalid, awaddr, awlen, awsize, awburst, awcache, awid, awlock,
-            wvalid, wdata, wstrb, wlast, bready);
+typedef struct packed {
+    logic arvalid;
+    logic [31:0] araddr;
+    logic [7:0] arlen;
+    logic [2:0] arsize;
+    logic [1:0] arburst;
+    logic [3:0] arcache;
+    logic [5:0] arid;
+    logic arlock;
 
-    modport slave (input arvalid, araddr, arlen, arsize, arburst, arcache, arlock,
-            rready,
-            awvalid, awaddr, awlen, awsize, awburst, awcache, awlock, arid,
-            wvalid, wdata, wstrb, wlast, awid,
-            bready,
-            output arready, rvalid, rdata, rresp, rlast, rid,
-            awready,
-            wready,
-            bvalid, bresp, bid);
+    logic rready;
 
-endinterface
+    logic awvalid;
+    logic [31:0] awaddr;
+    logic [7:0] awlen;
+    logic [2:0] awsize;
+    logic [1:0] awburst;
+    logic [3:0] awcache;
+    logic [5:0] awid;
+    logic awlock;
 
-interface avalon_interface;
+    logic wvalid;
+    logic [31:0] wdata;
+    logic [3:0] wstrb;
+    logic wlast;
+
+    logic bready;
+} slave_axi_interface_input;
+
+typedef struct packed {
+    logic arready;
+
+    logic rvalid;
+    logic [31:0] rdata;
+    logic [1:0] rresp;
+    logic rlast;
+    logic [5:0] rid;
+
+    logic awready;
+    logic wready;
+
+    logic bvalid;
+    logic [1:0] bresp;
+    logic [5:0] bid;
+} slave_axi_interface_output;
+
+
+typedef struct packed {
+    logic [31:0] readdata;
+    logic waitrequest;
+    logic readdatavalid;
+    logic writeresponsevalid;
+} master_avalon_interface_input;
+
+typedef struct packed {
     logic [31:0] addr;
     logic read;
     logic write;
     logic lock;
     logic [3:0] byteenable;
-    logic [31:0] readdata;
+    logic [31:0] wirtedata;
+} master_avalon_interface_output;
+
+typedef struct packed {
+    logic [31:0] addr;
+    logic read;
+    logic write;
+    logic lock;
+    logic [3:0] byteenable;
     logic [31:0] writedata;
+} slave_avalon_interface_input;
+
+typedef struct packed {
+    logic [31:0] readdata;
     logic waitrequest;
     logic readdatavalid;
     logic writeresponsevalid;
+} slave_avalon_interface_output;
 
-    modport master (input readdata, waitrequest, readdatavalid, writeresponsevalid,
-            output addr, read, write, lock, byteenable, writedata);
-    modport slave (output readdata, waitrequest, readdatavalid, writeresponsevalid,
-            input addr, read, write, lock, byteenable, writedata);
-
-endinterface
-
-interface wishbone_interface;
+typedef struct packed {
     logic [29:0] adr;
     logic [31:0] dat_w;
     logic [3:0] sel;
@@ -110,16 +156,30 @@ interface wishbone_interface;
     logic we;
     logic [2:0] cti;
     logic [1:0] bte;
+} master_wishbone_interface_output;
+
+typedef struct packed {
     logic [31:0] dat_r;
     logic ack;
     logic err;
+}  master_wishbone_interface_input;
 
-    modport master (input dat_r, ack, err,
-            output adr, dat_w, sel, cyc, stb, we, cti, bte);
-    modport slave (output dat_r, ack, err,
-            input adr, dat_w, sel, cyc, stb, we, cti, bte);
+typedef struct packed {
+    logic [29:0] adr;
+    logic [31:0] dat_w;
+    logic  [3:0] sel;
+    logic cyc;
+    logic stb;
+    logic we;
+    logic [2:0] cti;
+    logic [1:0] bte;
+} slave_wishbone_interface_input;
 
-endinterface
+typedef struct packed {
+    logic [31:0] dat_r;
+    logic        ack;
+    logic        err;
+} slave_wishbone_interface_output;
 
 interface mem_interface;
     logic request;
@@ -150,6 +210,8 @@ interface mem_interface;
     modport mem_slave (input request, addr, rlen, rnw, rmw, wbe, wdata, id, output ack, rvalid, rdata, rid, inv, inv_addr, write_outstanding);
 
 endinterface
+
+
 
 interface local_memory_interface;
     logic[29:0] addr;
