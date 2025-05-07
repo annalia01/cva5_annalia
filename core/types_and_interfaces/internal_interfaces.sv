@@ -80,7 +80,8 @@ typedef struct packed {
 } unit_unit_issue_interface_output;
 
 parameter DATA_WIDTH = 32;
-
+parameter NUM_WB_GROUPS = 3;
+parameter READ_PORTS = 2;
 typedef struct packed {
     logic ack;
 } unit_unit_writeback_interface_input;
@@ -314,146 +315,195 @@ typedef struct packed {
     logic empty;
 } queue_store_queue_interface_input;
 
+package cache_functions_pkg;
 
-
-interface cache_functions_interface #(parameter int TAG_W = 8, parameter int LINE_W = 4, parameter int SUB_LINE_W = 2);
+    parameter int TAG_W = 8;
+    parameter int LINE_W = 4;
+    parameter int SUB_LINE_W = 2;
 
     function logic [LINE_W-1:0] xor_mask (int WAY);
+        logic [LINE_W-1:0] mask;
         for (int i = 0; i < LINE_W; i++)
-            xor_mask[i] = ((WAY % 2) == 0) ? 1'b1 : 1'b0;
+            mask[i] = ((WAY % 2) == 0) ? 1'b1 : 1'b0;
+        return mask;
     endfunction
 
     function logic [LINE_W-1:0] getHashedLineAddr (logic[31:0] addr, int WAY);
-        getHashedLineAddr = addr[2 + SUB_LINE_W +: LINE_W] ^ (addr[2 + SUB_LINE_W + LINE_W +: LINE_W] & xor_mask(WAY));
+        return addr[2 + SUB_LINE_W +: LINE_W] ^ 
+               (addr[2 + SUB_LINE_W + LINE_W +: LINE_W] & xor_mask(WAY));
     endfunction
 
-    function logic[TAG_W-1:0] getTag(logic[31:0] addr);
-        getTag = addr[2 + LINE_W + SUB_LINE_W +: TAG_W];
+    function logic [TAG_W-1:0] getTag(logic[31:0] addr);
+        return addr[2 + LINE_W + SUB_LINE_W +: TAG_W];
     endfunction
 
     function logic [LINE_W-1:0] getTagLineAddr (logic[31:0] addr);
-        getTagLineAddr = addr[2 + SUB_LINE_W +: LINE_W];
+        return addr[2 + SUB_LINE_W +: LINE_W];
     endfunction
 
-    function logic [LINE_W+SUB_LINE_W-1:0] getDataLineAddr (logic[31:0] addr);
-        getDataLineAddr = addr[2 +: LINE_W + SUB_LINE_W];
+    function logic [LINE_W + SUB_LINE_W - 1:0] getDataLineAddr (logic[31:0] addr);
+        return addr[2 +: LINE_W + SUB_LINE_W];
     endfunction
 
-endinterface
+endpackage
 
-interface addr_utils_interface #(parameter logic [31:0] BASE_ADDR = 32'h00000000, parameter logic [31:0] UPPER_BOUND = 32'hFFFFFFFF);
-        //The range should be aligned for performance
-        function address_range_check (input logic[31:0] addr);
-            /* verilator lint_off UNSIGNED */
-            /* verilator lint_off CMPCONST */
-            return addr >= BASE_ADDR & addr <= UPPER_BOUND;
-            /* verilator lint_on UNSIGNED */
-            /* verilator lint_on CMPCONST */
-        endfunction
-endinterface
+package addr_utils_pkg;
 
-interface memory_sub_unit_interface;
+    // Parametri di default, modificabili al momento dell'import
+    parameter logic [31:0] BASE_ADDR    = 32'h00000000;
+    parameter logic [31:0] UPPER_BOUND = 32'hFFFFFFFF;
+
+    // Funzione per controllare se un indirizzo è nel range
+    function logic address_range_check(input logic [31:0] addr);
+        /* verilator lint_off UNSIGNED */
+        /* verilator lint_off CMPCONST */
+        return (addr >= BASE_ADDR) && (addr <= UPPER_BOUND);
+        /* verilator lint_on UNSIGNED */
+        /* verilator lint_on CMPCONST */
+    endfunction
+
+endpackage
+
+typedef struct packed {
     logic new_request;
     logic [31:0] addr;
     logic re;
     logic we;
     logic [3:0] be;
     logic [31:0] data_in;
+} memory_sub_unit_interface_controller_input;
 
+typedef struct packed {
     logic [31:0] data_out;
     logic data_valid;
     logic ready;
+} memory_sub_unit_interface_controller_output;
 
-    modport responder (
-        input addr, re, we, be, data_in, new_request,
-        output data_out, data_valid, ready
-    );
-    modport controller (
-        input data_out, data_valid, ready,
-        output addr, re, we, be, data_in, new_request
-    );
-endinterface
+typedef struct packed {
+    logic [31:0] data_out;
+    logic data_valid;
+    logic ready;
+} memory_sub_unit_interface_responder_input;
 
-//start and done are cycle cycle pulses
-interface unsigned_division_interface #(parameter DATA_WIDTH = 32);
-    logic start;
+typedef struct packed {
+    logic new_request;
+    logic [31:0] addr;
+    logic re;
+    logic we;
+    logic [3:0] be;
+    logic [31:0] data_in;
+} memory_sub_unit_interface_responder_output;
+
+// unsigned_division_interface
+typedef struct packed {
+    logic [DATA_WIDTH-1:0] remainder;
+    logic [DATA_WIDTH-1:0] quotient;
+    logic done;
+} unsigned_division_interface_requester_input;
+
+typedef struct packed {
     logic [DATA_WIDTH-1:0] dividend;
     logic [$clog2(DATA_WIDTH)-1:0] dividend_CLZ;
     logic [DATA_WIDTH-1:0] divisor;
     logic [$clog2(DATA_WIDTH)-1:0] divisor_CLZ;
+    logic divisor_is_zero;
+    logic start;
+} unsigned_division_interface_requester_output;
+
+typedef struct packed {
     logic [DATA_WIDTH-1:0] remainder;
     logic [DATA_WIDTH-1:0] quotient;
     logic done;
-    logic divisor_is_zero;
-    modport requester (input remainder, quotient, done, output dividend, dividend_CLZ, divisor, divisor_CLZ, divisor_is_zero, start);
-    modport divider (output remainder, quotient, done, input dividend, dividend_CLZ, divisor, divisor_CLZ, divisor_is_zero, start);
-endinterface
+} unsigned_division_interface_divider_input;
 
-interface unsigned_sqrt_interface #(parameter DATA_WIDTH = 32);
+typedef struct packed {
+    logic [DATA_WIDTH-1:0] dividend;
+    logic [$clog2(DATA_WIDTH)-1:0] dividend_CLZ;
+    logic [DATA_WIDTH-1:0] divisor;
+    logic [$clog2(DATA_WIDTH)-1:0] divisor_CLZ;
+    logic divisor_is_zero;
     logic start;
-    logic [DATA_WIDTH-1:0] radicand;
+} unsigned_division_interface_divider_output;
+
+typedef struct packed {
     logic [DATA_WIDTH-1:0] remainder;
     logic [DATA_WIDTH-1:0] result;
     logic done;
+} unsigned_sqrt_interface_requester_input;
 
-    modport requester (input remainder, result, done, output radicand, start);
-    modport sqrt (output remainder, result, done, input radicand, start);
-endinterface
+typedef struct packed {
+    logic [DATA_WIDTH-1:0] radicand;
+    logic start;
+} unsigned_sqrt_interface_requester_output;
 
-interface renamer_interface #(parameter NUM_WB_GROUPS = 3, parameter READ_PORTS = 2);
-    import riscv_types::*;
-    import cva5_types::*;
+typedef struct packed {
+    logic [DATA_WIDTH-1:0] remainder;
+    logic [DATA_WIDTH-1:0] result;
+    logic done;
+} unsigned_sqrt_interface_sqrt_input;
 
+typedef struct packed {
+    logic [DATA_WIDTH-1:0] radicand;
+    logic start;
+} unsigned_sqrt_interface_sqrt_output;
+
+typedef struct packed {
     rs_addr_t rd_addr;
     rs_addr_t rs_addr [READ_PORTS];
     logic [$clog2(NUM_WB_GROUPS)-1:0] rd_wb_group;
     logic uses_rd;
     id_t id;
+} renamer_interface_renamer_input;
 
+typedef struct packed {
     phys_addr_t phys_rs_addr [READ_PORTS];
+    logic [$clog2(NUM_WB_GROUPS)-1:0] rs_wb_group [READ_PORTS];
     phys_addr_t phys_rd_addr;
+} renamer_interface_renamer_output;
 
-    logic [$clog2(NUM_WB_GROUPS)-1:0] rs_wb_group [READ_PORTS];
-
-    modport renamer (
-        input rd_addr, rs_addr, rd_wb_group, uses_rd, id,
-        output phys_rs_addr, rs_wb_group, phys_rd_addr
-    );
-    modport decode (
-        input phys_rs_addr, rs_wb_group, phys_rd_addr,
-        output rd_addr, rs_addr, rd_wb_group, uses_rd, id
-    );
-endinterface
-
-interface register_file_issue_interface #(parameter NUM_WB_GROUPS = 3, parameter DATA_WIDTH = 32, parameter READ_PORTS = 2);
-    import cva5_types::*;
-
-    //read interface
+typedef struct packed {
     phys_addr_t phys_rs_addr [READ_PORTS];
     logic [$clog2(NUM_WB_GROUPS)-1:0] rs_wb_group [READ_PORTS];
-    logic [DATA_WIDTH-1:0] data [READ_PORTS];
-    logic inuse [READ_PORTS];
+    phys_addr_t phys_rd_addr;
+} renamer_interface_decode_input;
 
-    //issue write interface
+typedef struct packed {
+    rs_addr_t rd_addr;
+    rs_addr_t rs_addr [READ_PORTS];
+    logic [$clog2(NUM_WB_GROUPS)-1:0] rd_wb_group;
+    logic uses_rd;
+    id_t id;
+} renamer_interface_decode_output;
+ 
+typedef struct packed {
+    phys_addr_t phys_rs_addr [READ_PORTS];
     phys_addr_t phys_rd_addr;
     logic single_cycle_or_flush;
+    logic [$clog2(NUM_WB_GROUPS)-1:0] rs_wb_group [READ_PORTS];
+} register_file_issue_interface_register_file_input;
 
-    modport register_file (
-        input phys_rs_addr, phys_rd_addr, single_cycle_or_flush, rs_wb_group,
-        output data, inuse
-    );
-    modport issue (
-        output phys_rs_addr, phys_rd_addr, single_cycle_or_flush, rs_wb_group,
-        input data, inuse
-    );
-endinterface
+typedef struct packed {
+    logic [DATA_WIDTH-1:0] data [READ_PORTS];
+    logic inuse [READ_PORTS];
+} register_file_issue_interface_register_file_output;
 
-interface fp_intermediate_wb_interface;
-    import cva5_types::*;
-    import fpu_types::*;
+typedef struct packed {
+    logic [DATA_WIDTH:0] data [READ_PORTS];
+    logic inuse [READ_PORTS];
+} register_file_issue_interface_issue_input;
 
+typedef struct packed {
+    phys_addr_t phys_rs_addr [2];
+    phys_addr_t phys_rd_addr;
+    logic single_cycle_or_flush;
+    logic [$clog2(3)-1:0] rs_wb_group [2];
+} register_file_issue_interface_issue_output;
+
+typedef struct packed {
     logic ack;
+} fp_intermediate_wb_interface_unit_input;
 
+typedef struct packed {
     id_t id;
     logic done;
     fp_t rd;
@@ -470,40 +520,57 @@ interface fp_intermediate_wb_interface;
     logic subnormal;
     logic ignore_max_expo;
     logic d2s;
+} fp_intermediate_wb_interface_unit_output;
 
-    modport unit (
-        input ack,
-        output id, done, rd, expo_overflow, fflags, rm, hidden, grs, clz, carry, safe, subnormal, right_shift, right_shift_amt, ignore_max_expo, d2s
-    );
-    modport wb (
-        output ack,
-        input id, done, rd, expo_overflow, fflags, rm, hidden, grs, clz, carry, safe, subnormal, right_shift, right_shift_amt, ignore_max_expo, d2s
-    );
-endinterface
+typedef struct packed {
+    logic ack;
+} fp_intermediate_wb_interface_wb_input;
 
-interface amo_interface;
-    import riscv_types::*;
+typedef struct packed {
+    id_t id;
+    logic done;
+    fp_t rd;
+    logic expo_overflow;
+    fflags_t fflags;
+    rm_t rm;
+    logic carry;
+    logic safe;
+    logic hidden;
+    grs_t grs;
+    fp_shift_amt_t clz;
+    logic right_shift;
+    fp_shift_amt_t right_shift_amt;
+    logic subnormal;
+    logic ignore_max_expo;
+    logic d2s;
+} fp_intermediate_wb_interface_wb_output;
 
-    //Atomic Load Reserved and Store Conditional
+typedef struct packed {
+    logic reservation_valid;
+    logic [31:0] rd;
+} amo_interface_subunit_input;
+
+typedef struct packed {
     logic set_reservation;
     logic clear_reservation;
-    logic[31:0] reservation;
-    logic reservation_valid;
-
-    //Atomic Read-Modify-Write
+    logic [31:0] reservation;
     logic rmw_valid;
     amo_t op;
-    logic[31:0] rs1;
-    logic[31:0] rs2;
-    logic[31:0] rd;
+    logic [31:0] rs1;
+    logic [31:0] rs2;
+} amo_interface_subunit_output;
 
-    modport subunit (
-        input reservation_valid, rd,
-        output set_reservation, clear_reservation, reservation, rmw_valid, op, rs1, rs2
-    );
-    modport amo_unit (
-        output reservation_valid, rd,
-        input set_reservation, clear_reservation, reservation, rmw_valid, op, rs1, rs2
-    );
+typedef struct packed {
+    logic set_reservation;
+    logic clear_reservation;
+    logic [31:0] reservation;
+    logic rmw_valid;
+    amo_t op;
+    logic [31:0] rs1;
+    logic [31:0] rs2;
+} amo_interface_amo_unit_input;
 
-endinterface
+typedef struct packed {
+    logic reservation_valid;
+    logic [31:0] rd;
+} amo_interface_amo_unit_output;
