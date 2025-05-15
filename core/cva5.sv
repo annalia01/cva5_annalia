@@ -55,23 +55,89 @@ module cva5
 
     ////////////////////////////////////////////////////
     //Connecting Signals
-    mem_interface dcache_mem();
-    mem_interface icache_mem();
-    mem_interface dmmu_mem();
-    mem_interface immu_mem();
+    //mem_interface dcache_mem();
+    master_ro_mem_interface_input dcache_mem_input_master_ro;
+    master_ro_mem_interface_output dcache_mem_output_master_ro;
+    slave_ro_mem_interface_input dcache_mem_input_slave_ro;
+    slave_ro_mem_interface_output dcache_mem_output_slave_ro;
+    master_rw_mem_interface_input dcache_mem_input_master_rw;
+    master_rw_mem_interface_output dcache_mem_output_master_rw;
+    slave_rw_mem_interface_input dcache_mem_input_slave_rw;
+    slave_rw_mem_interface_output dcache_mem_output_slave_rw;
+    master_mem_mem_interface_input dcache_mem_input_master_mem;
+    master_mem_mem_interface_output dcache_mem_output_master_mem;
+    
+    //mem_interface icache_mem();
+    master_ro_mem_interface_input icache_mem_input_master_ro;
+    master_ro_mem_interface_output icache_mem_output_master_ro;
+    slave_ro_mem_interface_input icache_mem_input_slave_ro;
+    slave_ro_mem_interface_output icache_mem_output_slave_ro;
+    master_rw_mem_interface_input icache_mem_input_master_rw;
+    master_rw_mem_interface_output icache_mem_output_master_rw;
+    slave_rw_mem_interface_input icache_mem_input_slave_rw;
+    slave_rw_mem_interface_output icache_mem_output_slave_rw;
+    master_mem_mem_interface_input icache_mem_input_master_mem;
+    master_mem_mem_interface_output icache_mem_output_master_mem;
+    
+    //mem_interface dmmu_mem();
+    master_ro_mem_interface_input dmmu_mem_input_master_ro;
+    master_ro_mem_interface_output dmmu_mem_output_master_ro;
+    slave_ro_mem_interface_input dmmu_mem_input_slave_ro;
+    slave_ro_mem_interface_output dmmu_mem_output_slave_ro;
+    master_rw_mem_interface_input dmmu_mem_input_master_rw;
+    master_rw_mem_interface_output dmmu_mem_output_master_rw;
+    slave_rw_mem_interface_input dmmu_mem_input_slave_rw;
+    slave_rw_mem_interface_output dmmu_mem_output_slave_rw;
+    master_mem_mem_interface_input dmmu_mem_input_master_mem;
+    master_mem_mem_interface_output dmmu_mem_output_master_mem;
+    
+    //mem_interface immu_mem();
+    master_ro_mem_interface_input immu_mem_input_master_ro;
+    master_ro_mem_interface_output immu_mem_output_master_ro;
+    slave_ro_mem_interface_input immu_mem_input_slave_ro;
+    slave_ro_mem_interface_output immu_mem_output_slave_ro;
+    master_rw_mem_interface_input immu_mem_input_master_rw;
+    master_rw_mem_interface_output immu_mem_output_master_rw;
+    slave_rw_mem_interface_input immu_mem_input_slave_rw;
+    slave_rw_mem_interface_output immu_mem_output_slave_rw;
+    master_mem_mem_interface_input immu_mem_input_master_mem;
+    master_mem_mem_interface_output immu_mem_output_master_mem;
+    
+    //branch_predictor_interface bp();
+    branch_predictor_branch_predictor_input bp_branch_predictor_input;
+    branch_predictor_branch_predictor_output bp_branch_predictor_output;
+    fetch_branch_predictor_input bp_fetch_input;
+    fetch_branch_predictor_output bp_fetch_output;
 
-    branch_predictor_interface bp();
+
+    
     branch_results_t br_results;
     logic branch_flush;
     logic potential_branch_exception;
     exception_packet_t br_exception;
     logic branch_exception_is_jump;
 
-    ras_interface ras();
+    //ras_interface ras();
+    branch_predictor_ras_interface_output ras_branch_predictor_output;
+    self_ras_interface_input ras_self_input;
+    self_ras_interface_output ras_self_output;
+    fetch_ras_interface_input ras_fetch_input;
+    fetch_ras_interface_output ras_fetch_output;
 
+
+    
     issue_packet_t issue;
-    register_file_issue_interface #(.NUM_WB_GROUPS(CONFIG.NUM_WB_GROUPS), .READ_PORTS(REGFILE_READ_PORTS), .DATA_WIDTH(32)) rf_issue();
-    register_file_issue_interface #(.NUM_WB_GROUPS(2), .READ_PORTS(3), .DATA_WIDTH(FLEN)) fp_rf_issue();
+    //register_file_issue_interface #(.NUM_WB_GROUPS(CONFIG.NUM_WB_GROUPS), .READ_PORTS(REGFILE_READ_PORTS), .DATA_WIDTH(32)) rf_issue();
+    register_file_issue_interface_register_file_input rf_issue_register_file_input;
+    register_file_issue_interface_register_file_output rf_issue_register_file_output;
+    register_file_issue_interface_issue_input rf_issue_issue_input;
+    register_file_issue_interface_issue_output rf_issue_issue_output;
+    
+    //register_file_issue_interface #(.NUM_WB_GROUPS(2), .READ_PORTS(3), .DATA_WIDTH(FLEN)) fp_rf_issue();
+    register_file_issue_interface_register_file_input fp_rf_issue_register_file_input;
+    register_file_issue_interface_register_file_output fp_rf_issue_register_file_output;
+    register_file_issue_interface_issue_input fp_rf_issue_issue_input;
+    register_file_issue_interface_issue_output fp_rf_issue_issue_output;
 
     logic [MAX_NUM_UNITS-1:0] unit_needed;
     logic [MAX_NUM_UNITS-1:0][REGFILE_READ_PORTS-1:0] unit_uses_rs;
@@ -81,16 +147,43 @@ module cva5
 
     logic [31:0] constant_alu;
 
-    unit_issue_interface unit_issue [MAX_NUM_UNITS-1:0]();
+    //unit_issue_interface unit_issue [MAX_NUM_UNITS-1:0]();
+    decode_unit_issue_interface_input unit_issue_decode_input;
+    decode_unit_issue_interface_output unit_issue_decode_output;
+    unit_unit_issue_interface_input unit_issue_unit_input;
+    unit_unit_issue_interface_output unit_issue_unit_output;
 
     exception_packet_t  ls_exception;
     logic ls_exception_is_store;
 
-    mmu_interface immu();
-    mmu_interface dmmu();
+    //mmu_interface immu();
+    mmu_mmu_interface_input immu_mmu_input;
+    mmu_mmu_interface_output immu_mmu_output;
+    tlb_mmu_interface_input immu_tlb_input;
+    tlb_mmu_interface_output immu_tlb_output;
+    csr_mmu_interface_output immu_csr_output;
 
-    tlb_interface itlb();
-    tlb_interface dtlb();
+    
+    //mmu_interface dmmu();
+    mmu_mmu_interface_input dmmu_mmu_input;
+    mmu_mmu_interface_output dmmu_mmu_output;
+    tlb_mmu_interface_input dmmu_tlb_input;
+    tlb_mmu_interface_output dmmu_tlb_output;
+    csr_mmu_interface_output dmmu_csr_output;
+
+
+    //tlb_interface itlb();
+    tlb_tlb_interface_input itlb_tlb_input;
+    tlb_tlb_interface_output itlb_tlb_output;
+    requester_tlb_interface_output itlb_requester_output;
+    requester_tlb_interface_input itlb_requester_input;
+
+    //tlb_interface dtlb();
+    tlb_tlb_interface_input dtlb_tlb_input;
+    tlb_tlb_interface_output dtlb_tlb_output;
+    requester_tlb_interface_output dtlb_requester_output;
+    requester_tlb_interface_input dtlb_requester_input;
+    
     logic instruction_translation_on;
     logic data_translation_on;
     logic [ASIDLEN-1:0] asid;
@@ -131,17 +224,36 @@ module cva5
     logic retire_port_valid [RETIRE_PORTS];
     logic [LOG2_RETIRE_PORTS : 0] retire_count;
         //Writeback
-    unit_writeback_interface #(.DATA_WIDTH(32)) unit_wb [MAX_NUM_UNITS]();
-    unit_writeback_interface #(.DATA_WIDTH(FLEN)) fp_unit_wb [2]();
+    //unit_writeback_interface #(.DATA_WIDTH(32)) unit_wb [MAX_NUM_UNITS]();
+    unit_unit_writeback_interface_input unit_wb_unit_input;
+    unit_unit_writeback_interface_output unit_wb_unit_output;
+    wb_unit_writeback_interface_input unit_wb_wb_input;
+    wb_unit_writeback_interface_output unit_wb_wb_output;
+    
+    //unit_writeback_interface #(.DATA_WIDTH(FLEN)) fp_unit_wb [2]();
+    unit_unit_writeback_interface_input fp_unit_wb_unit_input;
+    unit_unit_writeback_interface_output fp_unit_wb_unit_output;
+    wb_unit_writeback_interface_input fp_unit_wb_wb_input;
+    wb_unit_writeback_interface_output fp_unit_wb_wb_output;
+    
     wb_packet_t wb_packet [CONFIG.NUM_WB_GROUPS];
     fp_wb_packet_t fp_wb_packet [2];
     phys_addr_t wb_phys_addr [CONFIG.NUM_WB_GROUPS];
     phys_addr_t fp_wb_phys_addr [2];
     logic [4:0] fflag_wmask;
 
-    renamer_interface #(.NUM_WB_GROUPS(CONFIG.NUM_WB_GROUPS), .READ_PORTS(REGFILE_READ_PORTS)) decode_rename_interface ();
-    renamer_interface #(.NUM_WB_GROUPS(2), .READ_PORTS(3)) fp_decode_rename_interface ();
-
+    //renamer_interface #(.NUM_WB_GROUPS(CONFIG.NUM_WB_GROUPS), .READ_PORTS(REGFILE_READ_PORTS)) decode_rename_interface ();
+    renamer_renamer_interface_input decode_rename_interface_renamer_input;
+    renamer_renamer_interface_output decode_rename_interface_renamer_output;
+    decode_renamer_interface_input decode_rename_interface_decode_input;
+    decode_renamer_interface_output decode_rename_interface_decode_output;
+    
+    //renamer_interface #(.NUM_WB_GROUPS(2), .READ_PORTS(3)) fp_decode_rename_interface ();
+    renamer_renamer_interface_input fp_decode_rename_interface_renamer_input;
+    renamer_renamer_interface_output fp_decode_rename_interface_renamer_output;
+    decode_renamer_interface_input fp_decode_rename_interface_decode_input;
+    decode_renamer_interface_output fp_decode_rename_interface_decode_output;
+    
     //Global Control
     exception_interface exception [NUM_EXCEPTION_SOURCES]();
     gc_outputs_t gc;
