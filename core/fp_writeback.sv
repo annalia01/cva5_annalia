@@ -26,20 +26,22 @@ module fp_writeback
 
     (
         //Unit writeback
-        unit_writeback_interface.wb unit_wb[2],
+        //unit_writeback_interface.wb unit_wb[2],
+        wb_unit_writeback_interface_input unit_wb_input[2],
+        wb_unit_writeback_interface_output unit_wb_output[2],
         //WB output
         output fp_wb_packet_t wb_packet[2]
     );
 
     //Because there are two writeback ports for the FP register file, no arbitration is needed
-    assign wb_packet[0].id = unit_wb[0].id;
-    assign wb_packet[0].valid = unit_wb[0].done;
-    assign wb_packet[0].data = unit_wb[0].rd;
-    assign unit_wb[0].ack = unit_wb[0].done;
+    assign wb_packet[0].id = unit_wb_input[0].id;
+    assign wb_packet[0].valid = unit_wb_input[0].done;
+    assign wb_packet[0].data = unit_wb_input[0].rd;
+    assign unit_wb_output[0].ack = unit_wb_input[0].done;
 
-    assign wb_packet[1].id = unit_wb[1].id;
-    assign wb_packet[1].valid = unit_wb[1].done;
-    assign wb_packet[1].data = unit_wb[1].rd;
-    assign unit_wb[1].ack = unit_wb[1].done;
+    assign wb_packet[1].id = unit_wb_input[1].id;
+    assign wb_packet[1].valid = unit_wb_input[1].done;
+    assign wb_packet[1].data = unit_wb_input[1].rd;
+    assign unit_wb_output[1].ack = unit_wb_input[1].done;
 
 endmodule
