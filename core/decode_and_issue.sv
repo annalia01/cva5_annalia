@@ -89,8 +89,8 @@ module decode_and_issue
         output logic [31:0] constant_alu,
 
         //unit_issue_interface.decode unit_issue [MAX_NUM_UNITS-1:0],
-        decode_unit_issue_interface_input unit_issue_input,
-        decode_unit_issue_interface_output unit_issue_output,
+        decode_unit_issue_interface_input unit_issue_input[MAX_NUM_UNITS-1:0],
+        decode_unit_issue_interface_output unit_issue_output[MAX_NUM_UNITS-1:0],
         
         input gc_outputs_t gc,
         input logic [1:0] current_privilege,
@@ -178,16 +178,16 @@ module decode_and_issue
 
     ////////////////////////////////////////////////////
     //Renamer Support
-    assign renamer.rd_addr = decode_instruction.rd_addr;
-    assign fp_renamer.rd_addr = decode_instruction.rd_addr;
-    assign renamer.rs_addr = decode_rs_addr;
-    assign fp_renamer.rs_addr = fp_decode_rs_addr;
-    assign renamer.uses_rd = decode_uses_rd;
-    assign fp_renamer.uses_rd = fp_decode_uses_rd;
-    assign renamer.rd_wb_group = decode_wb_group;
-    assign fp_renamer.rd_wb_group = fp_decode_wb_group;
-    assign renamer.id = decode.id;
-    assign fp_renamer.id = decode.id;
+    assign renamer_output.rd_addr = decode_instruction.rd_addr;
+    assign fp_renamer_output.rd_addr = decode_instruction.rd_addr;
+    assign renamer_output.rs_addr = decode_rs_addr;
+    assign fp_renamer_output.rs_addr = fp_decode_rs_addr;
+    assign renamer_output.uses_rd = decode_uses_rd;
+    assign fp_renamer_output.uses_rd = fp_decode_uses_rd;
+    assign renamer_output.rd_wb_group = decode_wb_group;
+    assign fp_renamer_output.rd_wb_group = fp_decode_wb_group;
+    assign renamer_output.id = decode.id;
+    assign fp_renamer_output.id = decode.id;
 
     ////////////////////////////////////////////////////
     //Decode ID Support
@@ -213,13 +213,13 @@ module decode_and_issue
             issue.fn3 <= decode_instruction.fn3;
             issue.opcode <= decode.instruction[6:0];
             issue_rs_addr <= decode_rs_addr;
-            issue_phys_rs_addr <= renamer.phys_rs_addr;
-            fp_issue_phys_rs_addr <= fp_renamer.phys_rs_addr;
-            issue_rs_wb_group <= renamer.rs_wb_group;
-            fp_issue_rs_wb_group <= fp_renamer.rs_wb_group;
+            issue_phys_rs_addr <= renamer_input.phys_rs_addr;
+            fp_issue_phys_rs_addr <= fp_renamer_input.phys_rs_addr;
+            issue_rs_wb_group <= renamer_input.rs_wb_group;
+            fp_issue_rs_wb_group <= fp_renamer_input.rs_wb_group;
             issue.rd_addr <= decode_instruction.rd_addr;
-            issue.phys_rd_addr <= renamer.phys_rd_addr;
-            issue.fp_phys_rd_addr <= fp_renamer.phys_rd_addr;
+            issue.phys_rd_addr <= renamer_input.phys_rd_addr;
+            issue.fp_phys_rd_addr <= fp_renamer_input.phys_rd_addr;
             issue_rd_wb_group <= decode_wb_group;
             fp_issue_rd_wb_group <= fp_decode_wb_group;
             issue.is_multicycle <= ~unit_needed[ALU_ID];
@@ -258,10 +258,10 @@ module decode_and_issue
     ////////////////////////////////////////////////////
     //Unit EX signals
     generate for (genvar i = 0; i < MAX_NUM_UNITS; i++) begin : gen_unit_issue_signals
-        assign unit_issue[i].possible_issue = issue.stage_valid & unit_needed_issue_stage[i] & unit_issue[i].ready;
+        assign unit_issue_output[i].possible_issue = issue.stage_valid & unit_needed_issue_stage[i] & unit_issue_input[i].ready;
         assign issue_to[i] = unit_issue[i].possible_issue & (&operand_ready) & (&fp_operand_ready) & ~issue_hold;
-        assign unit_issue[i].new_request = issue_to[i] & ~gc.fetch_flush;
-        assign unit_issue[i].id = issue.id;
+        assign unit_issue_output[i].new_request = issue_to[i] & ~gc.fetch_flush;
+        assign unit_issue_output[i].id = issue.id;
     end endgenerate
 
     assign instruction_issued = |issue_to & ~gc.fetch_flush;
@@ -270,15 +270,15 @@ module decode_and_issue
 
     ////////////////////////////////////////////////////
     //Register File Issue Interface
-    assign rf.phys_rs_addr = issue_phys_rs_addr;
-    assign fp_rf.phys_rs_addr = fp_issue_phys_rs_addr;
-    assign rf.phys_rd_addr = issue.phys_rd_addr;
-    assign fp_rf.phys_rd_addr = issue.fp_phys_rd_addr;
-    assign rf.rs_wb_group = issue_rs_wb_group;
-    assign fp_rf.rs_wb_group = fp_issue_rs_wb_group;
+    assign rf_output.phys_rs_addr = issue_phys_rs_addr;
+    assign fp_rf_output.phys_rs_addr = fp_issue_phys_rs_addr;
+    assign rf_output.phys_rd_addr = issue.phys_rd_addr;
+    assign fp_rf_output.phys_rd_addr = issue.fp_phys_rd_addr;
+    assign rf_output.rs_wb_group = issue_rs_wb_group;
+    assign fp_rf_output.rs_wb_group = fp_issue_rs_wb_group;
     
-    assign rf.single_cycle_or_flush = (instruction_issued_with_rd & |issue.rd_addr & ~issue.is_multicycle) | (issue.stage_valid & issue.uses_rd & |issue.rd_addr & gc.fetch_flush);
-    assign fp_rf.single_cycle_or_flush = issue.stage_valid & issue.fp_uses_rd & gc.fetch_flush;
+    assign rf_output.single_cycle_or_flush = (instruction_issued_with_rd & |issue.rd_addr & ~issue.is_multicycle) | (issue.stage_valid & issue.uses_rd & |issue.rd_addr & gc.fetch_flush);
+    assign fp_rf_output.single_cycle_or_flush = issue.stage_valid & issue.fp_uses_rd & gc.fetch_flush;
     
     ////////////////////////////////////////////////////
     //Constant ALU:
