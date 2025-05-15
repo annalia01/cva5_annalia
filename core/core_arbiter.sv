@@ -112,15 +112,15 @@ module core_arbiter
     //Arbitration
     round_robin #(.NUM_PORTS(4)) rr (
         .requests(request),
-        .grant(mem.request & mem.ack),
+        .grant(mem_input.request & mem_input.ack),
         .grantee(port),
     .*);
 
-    assign mem.request = |request;
-    assign mem.addr = addr[port];
-    assign mem.rlen = rlen[port];
-    assign mem.rnw = rnw[port];
-    assign mem.rmw = rmw[port];
-    assign mem.id = port;
+    assign mem_output.request = |request;
+    assign mem_output.addr = addr[port];
+    assign mem_output.rlen = rlen[port];
+    assign mem_output.rnw = rnw[port];
+    assign mem_output.rmw = rmw[port];
+    assign mem_output.id = port;
 
 endmodule
