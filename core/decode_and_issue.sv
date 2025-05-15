@@ -42,8 +42,13 @@ module decode_and_issue
         output logic decode_advance,
 
         //Renamer
-        renamer_interface.decode renamer,
-        renamer_interface.decode fp_renamer,
+        //renamer_interface.decode renamer,
+        decode_renamer_interface_input renamer_input,
+        decode_renamer_interface_output renamer_output,
+        
+        //renamer_interface.decode fp_renamer,
+        decode_renamer_interface_input fp_renamer_input,
+        decode_renamer_interface_output fp_renamer_output,
 
         input logic [MAX_NUM_UNITS-1:0] unit_needed,
         input logic [MAX_NUM_UNITS-1:0][REGFILE_READ_PORTS-1:0] unit_uses_rs,
@@ -73,17 +78,25 @@ module decode_and_issue
         output logic issue_stage_ready,
 
         //Register File
-        register_file_issue_interface.issue rf,
-        register_file_issue_interface.issue fp_rf,
+        //register_file_issue_interface.issue rf,
+        issue_register_file_issue_interface_input rf_input,
+        issue_register_file_issue_interface_output rf_output,
+        
+        //register_file_issue_interface.issue fp_rf,
+        issue_register_file_issue_interface_input fp_rf_input,
+        issue_register_file_issue_interface_output fp_rf_output
 
         output logic [31:0] constant_alu,
 
-        unit_issue_interface.decode unit_issue [MAX_NUM_UNITS-1:0],
-
+        //unit_issue_interface.decode unit_issue [MAX_NUM_UNITS-1:0],
+        decode_unit_issue_interface_input unit_issue_input,
+        decode_unit_issue_interface_output unit_issue_output,
+        
         input gc_outputs_t gc,
         input logic [1:0] current_privilege,
 
-        exception_interface.unit exception
+        //exception_interface.unit exception
+        unit_exception_output exception_output
     );
 
 
