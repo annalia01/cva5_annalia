@@ -480,24 +480,24 @@ typedef struct packed {
     phys_addr_t phys_rd_addr;
     logic single_cycle_or_flush;
     logic [$clog2(NUM_WB_GROUPS)-1:0] rs_wb_group [READ_PORTS];
-} register_file_issue_interface_register_file_input;
+} register_file_register_file_issue_interface_input;
 
 typedef struct packed {
     logic [DATA_WIDTH-1:0] data [READ_PORTS];
     logic inuse [READ_PORTS];
-} register_file_issue_interface_register_file_output;
+} register_file_register_file_issue_interface_output;
 
 typedef struct packed {
     logic [DATA_WIDTH:0] data [READ_PORTS];
     logic inuse [READ_PORTS];
-} register_file_issue_interface_issue_input;
+} issue_register_file_issue_interface_input;
 
 typedef struct packed {
     phys_addr_t phys_rs_addr [2];
     phys_addr_t phys_rd_addr;
     logic single_cycle_or_flush;
     logic [$clog2(3)-1:0] rs_wb_group [2];
-} register_file_issue_interface_issue_output;
+} issue_register_file_issue_interface_output;
 
 typedef struct packed {
     logic ack;
