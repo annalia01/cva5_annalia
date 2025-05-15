@@ -48,7 +48,7 @@ typedef struct packed {
     logic        is_return;
     logic        is_call;
     logic        is_branch;
-} branch_predictor_fetch_input;
+} fetch_branch_predictor_input;
 
 typedef struct packed {
     logic [31:0] if_pc;
@@ -57,7 +57,7 @@ typedef struct packed {
     logic [31:0] next_pc;
     id_t         pc_id;
     logic        pc_id_assigned;
-} branch_predictor_fetch_output;
+} fetch_branch_predictor_output;
 
 typedef struct packed {
     logic        ready;
@@ -453,19 +453,19 @@ typedef struct packed {
     logic [$clog2(NUM_WB_GROUPS)-1:0] rd_wb_group;
     logic uses_rd;
     id_t id;
-} renamer_interface_renamer_input;
+} renamer_renamer_interface_input;
 
 typedef struct packed {
     phys_addr_t phys_rs_addr [READ_PORTS];
     logic [$clog2(NUM_WB_GROUPS)-1:0] rs_wb_group [READ_PORTS];
     phys_addr_t phys_rd_addr;
-} renamer_interface_renamer_output;
+} renamer_renamer_interface_output;
 
 typedef struct packed {
     phys_addr_t phys_rs_addr [READ_PORTS];
     logic [$clog2(NUM_WB_GROUPS)-1:0] rs_wb_group [READ_PORTS];
     phys_addr_t phys_rd_addr;
-} renamer_interface_decode_input;
+} decode_renamer_interface_input;
 
 typedef struct packed {
     rs_addr_t rd_addr;
@@ -473,7 +473,7 @@ typedef struct packed {
     logic [$clog2(NUM_WB_GROUPS)-1:0] rd_wb_group;
     logic uses_rd;
     id_t id;
-} renamer_interface_decode_output;
+} decode_renamer_interface_output;
  
 typedef struct packed {
     phys_addr_t phys_rs_addr [READ_PORTS];
