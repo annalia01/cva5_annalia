@@ -38,15 +38,33 @@ module cva5
         input logic clk,
         input logic rst,
 
-        local_memory_interface.master instruction_bram,
-        local_memory_interface.master data_bram,
+        //local_memory_interface.master instruction_bram,
+        master_local_memory_interface_input instruction_bram_input,
+        master_local_memory_interface_output instruction_bram_output,
+        
+        //local_memory_interface.master data_bram,
+        master_local_memory_interface_input data_bram_input,
+        master_local_memory_interface_output data_bram_output,
 
-        axi_interface.master m_axi,
-        avalon_interface.master m_avalon,
-        wishbone_interface.master dwishbone,
-        wishbone_interface.master iwishbone,
+        //axi_interface.master m_axi,
+        master_axi_interface_output m_axi_output,
+        master_axi_interface_input m_axi_input,
+        
+        //avalon_interface.master m_avalon,
+        master_avalon_interface_input m_avalon_input,
+        master_avalon_interface_output m_avalon_output,
 
-        mem_interface.mem_master mem,
+        //wishbone_interface.master dwishbone,
+        master_wishbone_interface_output dwishbone_output,
+        master_wishbone_interface_input dwishbone_input,
+
+        //wishbone_interface.master iwishbone,
+        master_wishbone_interface_output iwishbone_output,
+        master_wishbone_interface_input iwishbone_input,
+
+        //mem_interface.mem_master mem,
+        master_mem_mem_interface_input mem_input,
+        master_mem_mem_interface_output mem_output,
 
         input logic [63:0] mtime,
         input interrupt_t s_interrupt,
@@ -302,11 +320,16 @@ module cva5
         arb(
             .clk (clk),
             .rst (rst),
-            .dcache (dcache_mem),
-            .icache (icache_mem),
-            .dmmu (dmmu_mem),
-            .immu (immu_mem),
-            .mem (mem)
+            .dcache_input (dcache_mem_input_slave_rw),
+            .dcache_output (dcache_mem_output_slave_rw),
+            .icache_input (icache_mem_input_slave_ro),
+            .icache_output (icache_mem_output_slave_ro),
+            .dmmu_input (dmmu_mem_input_slave_ro),
+            .dmmu_output (dmmu_mem_output_slave_ro),
+            .immu_input (immu_mem_input_slave_ro),
+            .immu_output (immu_mem_output_slave_ro),
+            .mem_input (mem_input),
+            .mem_output (mem_output)
         );
     end
     endgenerate
