@@ -66,46 +66,46 @@ module core_arbiter
     //Implementation
 
     //D$
-    assign request[0] = INCLUDE_DCACHE ? dcache.request : 0;
-    assign addr[0] = INCLUDE_DCACHE ? dcache.addr : 'x;
-    assign rlen[0] = INCLUDE_DCACHE ? dcache.rlen : 'x;
-    assign rnw[0] = INCLUDE_DCACHE ? dcache.rnw : 'x;
-    assign rmw[0] = INCLUDE_DCACHE ? dcache.rmw : 'x;
-    assign mem.wbe = dcache.wbe;
-    assign mem.wdata = dcache.wdata;
-    assign dcache.inv = mem.inv;
-    assign dcache.inv_addr = mem.inv_addr;
-    assign dcache.write_outstanding = mem.write_outstanding;
-    assign dcache.ack = mem.ack & port == 2'b00;
-    assign dcache.rvalid = mem.rvalid & mem.rid == 2'b00;
-    assign dcache.rdata = mem.rdata;
+    assign request[0] = INCLUDE_DCACHE ? dcache_input.request : 0;
+    assign addr[0] = INCLUDE_DCACHE ? dcache_input.addr : 'x;
+    assign rlen[0] = INCLUDE_DCACHE ? dcache_input.rlen : 'x;
+    assign rnw[0] = INCLUDE_DCACHE ? dcache_input.rnw : 'x;
+    assign rmw[0] = INCLUDE_DCACHE ? dcache_input.rmw : 'x;
+    assign mem_output.wbe = dcache_input.wbe;
+    assign mem_output.wdata = dcache_input.wdata;
+    assign dcache_output.inv = mem_input.inv;
+    assign dcache_output.inv_addr = mem_input.inv_addr;
+    assign dcache_output.write_outstanding = mem_input.write_outstanding;
+    assign dcache_output.ack = mem_input.ack & port == 2'b00;
+    assign dcache_output.rvalid = mem_input.rvalid & mem.rid == 2'b00;
+    assign dcache_output.rdata = mem_input.rdata;
     //I$
-    assign request[1] = INCLUDE_ICACHE ? icache.request : 0;
-    assign addr[1] = INCLUDE_ICACHE ? icache.addr : 'x;
-    assign rlen[1] = INCLUDE_ICACHE ? icache.rlen : 'x;
+    assign request[1] = INCLUDE_ICACHE ? icache_intput.request : 0;
+    assign addr[1] = INCLUDE_ICACHE ? icache_intput.addr : 'x;
+    assign rlen[1] = INCLUDE_ICACHE ? icache_intput.rlen : 'x;
     assign rnw[1] = INCLUDE_ICACHE ? 1 : 'x;
     assign rmw[1] = INCLUDE_ICACHE ? 0 : 'x;
-    assign icache.ack = mem.ack & port == 2'b01;
-    assign icache.rvalid = mem.rvalid & mem.rid == 2'b01;
-    assign icache.rdata = mem.rdata;
+    assign icache_output.ack = mem.ack & port == 2'b01;
+    assign icache_output.rvalid = mem.rvalid & mem.rid == 2'b01;
+    assign icache_output.rdata = mem.rdata;
     //DMMU
-    assign request[2] = INCLUDE_MMUS ? dmmu.request : 0;
-    assign addr[2] = INCLUDE_MMUS ? dmmu.addr : 'x;
-    assign rlen[2] = INCLUDE_MMUS ? dmmu.rlen : 'x;
+    assign request[2] = INCLUDE_MMUS ? dmmu_input.request : 0;
+    assign addr[2] = INCLUDE_MMUS ? dmmu_input.addr : 'x;
+    assign rlen[2] = INCLUDE_MMUS ? dmmu_input.rlen : 'x;
     assign rnw[2] = INCLUDE_MMUS ? 1 : 'x;
     assign rmw[2] = INCLUDE_MMUS ? 0 : 'x;
-    assign dmmu.rdata = mem.rdata;
-    assign dmmu.ack = mem.ack & port == 2'b10;
-    assign dmmu.rvalid = mem.rvalid & mem.rid == 2'b10;
+    assign dmmu_output.rdata = mem_input.rdata;
+    assign dmmu_output.ack = mem_input.ack & port == 2'b10;
+    assign dmmu_output.rvalid = mem_input.rvalid & mem.rid == 2'b10;
     //IMMU
-    assign request[3] = INCLUDE_MMUS ? immu.request : 0;
-    assign addr[3] = INCLUDE_MMUS ? immu.addr : 'x;
-    assign rlen[3] = INCLUDE_MMUS ? immu.rlen : 'x;
+    assign request[3] = INCLUDE_MMUS ? immu_input.request : 0;
+    assign addr[3] = INCLUDE_MMUS ? immu_input.addr : 'x;
+    assign rlen[3] = INCLUDE_MMUS ? immu_input.rlen : 'x;
     assign rnw[3] = INCLUDE_MMUS ? 1 : 'x;
     assign rmw[3] = INCLUDE_MMUS ? 0 : 'x;
-    assign immu.rdata = mem.rdata;
-    assign immu.ack = mem.ack & port == 2'b11;
-    assign immu.rvalid = mem.rvalid & mem.rid == 2'b11;
+    assign immu_output.rdata = mem_input.rdata;
+    assign immu_output.ack = mem_input.ack & port == 2'b11;
+    assign immu_output.rvalid = mem_input.rvalid & mem.rid == 2'b11;
 
     
     ////////////////////////////////////////////////////
