@@ -44,8 +44,13 @@ module fetch
         output logic fetch_complete,
         output fetch_metadata_t fetch_metadata,
 
-        branch_predictor_interface.fetch bp,
-        ras_interface.fetch ras,
+        //branch_predictor_interface.fetch bp,
+        fetch_branch_predictor_input bp_input,
+        fetch_branch_predictor_output bp_output,
+        
+        //ras_interface.fetch ras,
+        fetch_ras_interface_input ras_input,
+        fetch_ras_interface_output ras_output,
 
         //Instruction Metadata
         output logic early_branch_flush,
@@ -53,11 +58,22 @@ module fetch
         output logic [31:0] if_pc,
         output logic [31:0] fetch_instruction,
 
-        tlb_interface.requester tlb,
-        local_memory_interface.master instruction_bram,
-        wishbone_interface.master iwishbone,
+        //tlb_interface.requester tlb,
+        requester_tlb_interface_output tlb_output,
+        requester_tlb_interface_input tlb_input,
+        
+        //local_memory_interface.master instruction_bram,
+        master_local_memory_interface_input instruction_bram_input,
+        master_local_memory_interface_input instruction_bram_output,
+        
+        //wishbone_interface.master iwishbone,
+        master_wishbone_interface_output iwishbone_output,
+        master_wishbone_interface_output iwishbone_input,
+        
         input logic icache_on,
-        mem_interface.ro_master mem
+        //mem_interface.ro_master mem
+        master_mem_mem_interface_input mem_input,
+        master_mem_mem_interface_output mem_output
     );
 
     localparam NUM_SUB_UNITS = int'(CONFIG.INCLUDE_ILOCAL_MEM) + int'(CONFIG.INCLUDE_ICACHE) + int'(CONFIG.INCLUDE_IBUS);
@@ -74,9 +90,18 @@ module fetch
     addr_utils_interface #(CONFIG.ICACHE_ADDR.L, CONFIG.ICACHE_ADDR.H) icache_addr_utils ();
     addr_utils_interface #(CONFIG.IBUS_ADDR.L, CONFIG.IBUS_ADDR.H) ibus_addr_utils ();
 
-    memory_sub_unit_interface sub_unit[NUM_SUB_UNITS-1:0]();
-    amo_interface unused();
+    //memory_sub_unit_interface sub_unit[NUM_SUB_UNITS-1:0]();
+    controller_memory_sub_unit_interface_input sub_unit_controller_input[NUM_SUB_UNITS-1:0],
+    controller_memory_sub_unit_interface_output sub_unit_controller_output[NUM_SUB_UNITS-1:0],
+    responder_memory_sub_unit_interface_input sub_unit_responder_input[NUM_SUB_UNITS-1:0],
+    responder_memory_sub_unit_interface_output sub_unit_responder_output[NUM_SUB_UNITS-1:0],
 
+    //amo_interface unused();
+    subunit_amo_interface_input unused_subunit_input;
+    subunit_amo_interface_output unused_subunit_output;
+    amo_unit_amo_interface_input unused_amo_unit_input;
+    amo_unit_amo_interface_output unused_amo_unit_output;
+    
     logic [NUM_SUB_UNITS-1:0] sub_unit_address_match;
     logic [NUM_SUB_UNITS-1:0] unit_ready;
     logic [NUM_SUB_UNITS-1:0] unit_data_valid;
