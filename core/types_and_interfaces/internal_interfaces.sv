@@ -371,19 +371,19 @@ typedef struct packed {
     logic we;
     logic [3:0] be;
     logic [31:0] data_in;
-} memory_sub_unit_interface_controller_input;
+} controller_memory_sub_unit_interface_input;
 
 typedef struct packed {
     logic [31:0] data_out;
     logic data_valid;
     logic ready;
-} memory_sub_unit_interface_controller_output;
+} controller_memory_sub_unit_interface_output;
 
 typedef struct packed {
     logic [31:0] data_out;
     logic data_valid;
     logic ready;
-} memory_sub_unit_interface_responder_input;
+} responder_memory_sub_unit_interface_input;
 
 typedef struct packed {
     logic new_request;
@@ -392,7 +392,7 @@ typedef struct packed {
     logic we;
     logic [3:0] be;
     logic [31:0] data_in;
-} memory_sub_unit_interface_responder_output;
+} responder_memory_sub_unit_interface_output;
 
 // unsigned_division_interface
 typedef struct packed {
