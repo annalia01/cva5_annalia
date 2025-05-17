@@ -548,7 +548,7 @@ typedef struct packed {
 typedef struct packed {
     logic reservation_valid;
     logic [31:0] rd;
-} amo_interface_subunit_input;
+} subunit_amo_interface_input;
 
 typedef struct packed {
     logic set_reservation;
@@ -558,7 +558,7 @@ typedef struct packed {
     amo_t op;
     logic [31:0] rs1;
     logic [31:0] rs2;
-} amo_interface_subunit_output;
+} subunit_amo_interface_output;
 
 typedef struct packed {
     logic set_reservation;
@@ -568,9 +568,9 @@ typedef struct packed {
     amo_t op;
     logic [31:0] rs1;
     logic [31:0] rs2;
-} amo_interface_amo_unit_input;
+} amo_unit_amo_interface_input;
 
 typedef struct packed {
     logic reservation_valid;
     logic [31:0] rd;
-} amo_interface_amo_unit_output;
+} amo_unit_amo_interface_output;
