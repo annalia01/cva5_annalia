@@ -224,7 +224,7 @@ module fetch
     //TLB
     assign tlb_output.virtual_address = pc;
     assign tlb_output.rnw = 1;
-    assign tlb_output.new_request = tlb.ready & pc_id_available & ~fetch_attr_fifo.full & (~exception_pending) & (~gc.fetch_hold);
+    assign tlb_output.new_request = tlb.ready & pc_id_available & ~fetch_attr_fifo_enqueue_input.full & (~exception_pending) & (~gc.fetch_hold);
 
     //////////////////////////////////////////////
     //Issue Control Signals
@@ -263,7 +263,7 @@ module fetch
     assign fetch_attr = fetch_attr_fifo_dequeue_input.data_out;
     assign early_flush_pc = fetch_attr.early_flush_pc;
 
-    assign inflight_count_next = inflight_count + MAX_OUTSTANDING_REQUESTS_W'(fetch_attr_fifo.push) - MAX_OUTSTANDING_REQUESTS_W'(fetch_attr_fifo.pop);
+    assign inflight_count_next = inflight_count + MAX_OUTSTANDING_REQUESTS_W'(fetch_attr_fifo_enqueue_input.push) - MAX_OUTSTANDING_REQUESTS_W'(fetch_attr_fifo_structure_input.pop);
     always_ff @(posedge clk) begin
         if (rst)
             inflight_count <= 0;
@@ -364,8 +364,10 @@ module fetch
             .rst (rst),
             .ifence (ifence_start),
             .icache_on (icache_on),
-            .mem (mem),
-            .fetch_sub (sub_unit[ICACHE_ID])
+            .mem_input (mem_input),
+            .mem_output (mem_output),
+            .fetch_sub_input (sub_unit_responder_input[ICACHE_ID]),
+            .fetch_sub_output (sub_unit_responder_output[ICACHE_ID])
         );
     end endgenerate
 
@@ -375,7 +377,7 @@ module fetch
     ////////////////////////////////////////////////////
     //Instruction metada updates
     logic valid_fetch_result;
-    assign valid_fetch_result = CONFIG.MODES != BARE ? (fetch_attr_fifo.valid & fetch_attr.address_valid & (~fetch_attr.mmu_fault)) : 1;
+    assign valid_fetch_result = CONFIG.MODES != BARE ? (fetch_attr_fifo_dequeue_input.valid & fetch_attr.address_valid & (~fetch_attr.mmu_fault)) : 1;
 
     assign if_pc = pc;
     assign fetch_metadata.ok = valid_fetch_result;
@@ -383,7 +385,7 @@ module fetch
 
     assign fetch_instruction = unit_data_array[fetch_attr.subunit_id];
 
-    assign internal_fetch_complete = fetch_attr_fifo.valid & (~valid_fetch_result | |unit_data_valid);//allow instruction to propagate to decode if address is invalid
+    assign internal_fetch_complete = fetch_attr_fifo_dequeue_input.valid & (~valid_fetch_result | |unit_data_valid);//allow instruction to propagate to decode if address is invalid
     assign fetch_complete = internal_fetch_complete & ~|flush_count;
 
     ////////////////////////////////////////////////////
@@ -402,7 +404,7 @@ module fetch
     ////////////////////////////////////////////////////
     //Assertions
     spurious_fetch_complete_assertion:
-        assert property (@(posedge clk) disable iff (rst) (|unit_data_valid) |-> (fetch_attr_fifo.valid && unit_data_valid[fetch_attr.subunit_id]))
+    assert property (@(posedge clk) disable iff (rst) (|unit_data_valid) |-> (fetch_attr_fifo_dequeue_input.valid && unit_data_valid[fetch_attr.subunit_id]))
         else $error("Spurious fetch complete detected!");
 
 endmodule
