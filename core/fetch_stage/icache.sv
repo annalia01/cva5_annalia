@@ -171,7 +171,7 @@ module icache
         if (rst)
             tag_update <= 0;
         else
-            tag_update <= mem.ack;
+            tag_update <= mem_input.ack;
     end
 
     //Replacement policy is psuedo random
@@ -191,17 +191,17 @@ module icache
     logic initiate_l1_request;
     logic request_r;
 
-    assign mem.addr = second_cycle_addr[31:2];
-    assign mem.rlen = 5'(CONFIG.ICACHE.LINE_W-1);
+    assign mem_output.addr = second_cycle_addr[31:2];
+    assign mem_output.rlen = 5'(CONFIG.ICACHE.LINE_W-1);
 
     assign initiate_l1_request = second_cycle & (~tag_hit | ~icache_on);
     always_ff @ (posedge clk) begin
         if (rst)
             request_r <= 0;
         else
-            request_r <= (initiate_l1_request | request_r) & ~mem.ack;
+            request_r <= (initiate_l1_request | request_r) & ~mem_input.ack;
     end
-    assign mem.request = request_r;
+    assign mem_output.request = request_r;
 
     ////////////////////////////////////////////////////
     //Miss state tracking
@@ -209,7 +209,7 @@ module icache
         if (rst)
             linefill_in_progress <= 0;
         else
-            linefill_in_progress <= (linefill_in_progress & ~line_complete) | mem.ack;
+            linefill_in_progress <= (linefill_in_progress & ~line_complete) | mem_input.ack;
     end
 
     ////////////////////////////////////////////////////
