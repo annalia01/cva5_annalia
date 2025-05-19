@@ -25,6 +25,16 @@ module branch_predictor
     import cva5_config::*;
     import riscv_types::*;
     import cva5_types::*;
+    import cache_functions_pkg::*;
+    import addr_utils_pkg::*;
+    localparam int TAG_W        = SCONFIG.TAG_W;
+    localparam int LINE_W       = SCONFIG.LINE_ADDR_W;
+    localparam int SUB_LINE_W   = SCONFIG.SUB_LINE_ADDR_W;
+
+    `define addr_utils_getTag(addr) getTag#(.TAG_W(TAG_W), .LINE_W(LINE_W), .SUB_LINE_W(SUB_LINE_W))(addr)
+    `define addr_utils_getTagLineAddr(addr) getTagLineAddr#(.LINE_W(LINE_W), .SUB_LINE_W(SUB_LINE_W))(addr)
+    `define addr_utils_getHashedLineAddr(addr, way) getHashedLineAddr#(.LINE_W(LINE_W), .SUB_LINE_W(SUB_LINE_W))(addr, way)
+    `define addr_utils_getDataLineAddr(addr) getDataLineAddr#(.LINE_W(LINE_W), .SUB_LINE_W(SUB_LINE_W))(addr)
 
     # (
         parameter cpu_config_t CONFIG = EXAMPLE_CONFIG
@@ -33,9 +43,12 @@ module branch_predictor
     (
         input logic clk,
         input logic rst,
-        branch_predictor_interface.branch_predictor bp,
+        //branch_predictor_interface.branch_predictor bp,
+        branch_predictor_branch_predictor_input bp_input,
+        branch_predictor_branch_predictor_output bp_output,
         input branch_results_t br_results,
-        ras_interface.branch_predictor ras
+        //ras_interface.branch_predictor ras
+        branch_predictor_ras_interface_output ras_output
     );
 
     //BP tag width can be reduced, based on memory size, when virtual address
@@ -64,7 +77,7 @@ module branch_predictor
 
     localparam BRANCH_ADDR_W = $clog2(CONFIG.BP.ENTRIES);
     localparam BTAG_W = get_memory_width() - BRANCH_ADDR_W - 2;
-    cache_functions_interface #(.TAG_W(BTAG_W), .LINE_W(BRANCH_ADDR_W), .SUB_LINE_W(0)) addr_utils();
+    //cache_functions_interface #(.TAG_W(BTAG_W), .LINE_W(BRANCH_ADDR_W), .SUB_LINE_W(0)) addr_utils();
 
     typedef logic[1:0] branch_predictor_metadata_t;
     typedef struct packed {
@@ -98,7 +111,12 @@ module branch_predictor
     logic tag_match;
     logic use_predicted_pc;
 
-    addr_utils_interface #(CONFIG.IBUS_ADDR.L, CONFIG.IBUS_ADDR.H) ibus_addr_utils ();
+    //addr_utils_interface #(CONFIG.IBUS_ADDR.L, CONFIG.IBUS_ADDR.H) ibus_addr_utils ();
+    
+    addr_range_t ibus_addr_utils = '{
+        base_addr: CONFIG.IBUS_ADDR.L,
+        upper_bound: CONFIG.IBUS_ADDR.H
+    };
 
     /////////////////////////////////////////
 
@@ -116,7 +134,7 @@ module branch_predictor
                 .a_wdata(ex_entry),
                 .a_addr(addr_utils.getHashedLineAddr(br_results.pc, i)),
                 .b_en(bp.new_mem_request),
-                .b_addr(addr_utils.getHashedLineAddr(bp.next_pc, i)),
+                .b_addr(addr_utils.getHashedLineAddr(bp_input.next_pc, i)),
                 .b_rdata(if_entry[i]),
             .*);
 
@@ -131,11 +149,11 @@ module branch_predictor
                 .a_wdata(br_results.target_pc),
                 .a_addr(addr_utils.getHashedLineAddr(br_results.pc, i)),
                 .b_en(bp.new_mem_request),
-                .b_addr(addr_utils.getHashedLineAddr(bp.next_pc, i)),
+                .b_addr(addr_utils.getHashedLineAddr(bp_input.next_pc, i)),
                 .b_rdata(predicted_pc[i]),
             .*);
 
-            assign tag_matches[i] = ({if_entry[i].valid, if_entry[i].tag} == {1'b1, addr_utils.getTag(bp.if_pc)});
+            assign tag_matches[i] = ({if_entry[i].valid, if_entry[i].tag} == {1'b1, addr_utils.getTag(bp_input.if_pc)});
         end
     end
     endgenerate
@@ -153,11 +171,11 @@ module branch_predictor
     assign use_predicted_pc = CONFIG.INCLUDE_BRANCH_PREDICTOR & tag_match;
 
     //Predicted PC and whether the prediction is valid
-    assign bp.predicted_pc = predicted_pc[hit_way];
-    assign bp.use_prediction = use_predicted_pc;
-    assign bp.is_branch = if_entry[hit_way].is_branch;
-    assign bp.is_return = if_entry[hit_way].is_return;
-    assign bp.is_call = if_entry[hit_way].is_call;
+    assign bp_output.predicted_pc = predicted_pc[hit_way];
+    assign bp_output.use_prediction = use_predicted_pc;
+    assign bp_output.is_branch = if_entry[hit_way].is_branch;
+    assign bp_output.is_return = if_entry[hit_way].is_return;
+    assign bp_output.is_call = if_entry[hit_way].is_call;
 
     ////////////////////////////////////////////////////
     //Instruction Fetch metadata
@@ -211,10 +229,10 @@ module branch_predictor
     assign target_update_way = {CONFIG.BP.WAYS{branch_predictor_direction_changed}} & tag_update_way;
     ////////////////////////////////////////////////////
     //Target PC if branch flush occured
-    assign bp.branch_flush_pc = br_results.target_pc;
+    assign bp_output.branch_flush_pc = br_results.target_pc;
 
     ////////////////////////////////////////////////////
     //RAS support
-    assign ras.branch_retired = br_results.valid & br_results.is_branch & branch_metadata_ex.branch_prediction_used;
+    assign ras_output.branch_retired = br_results.valid & br_results.is_branch & branch_metadata_ex.branch_prediction_used;
 
 endmodule
