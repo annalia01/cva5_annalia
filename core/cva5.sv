@@ -411,9 +411,10 @@ module cva5
     bp_block (
         .clk (clk),
         .rst (rst),
-        .bp (bp),
+        .bp_input (bp_branch_predictor_input),
+        .bp_output (bp_branch_predictor_output),
         .br_results (br_results),
-        .ras (ras)
+        .ras_output(ras_branch_predictor_output)
     );
 
     ras # (.CONFIG(CONFIG))
