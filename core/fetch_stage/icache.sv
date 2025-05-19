@@ -25,6 +25,8 @@ module icache
     import cva5_config::*;
     import riscv_types::*;
     import cva5_types::*;
+    import cache_functions_pkg::*;
+
 
     # (
         parameter cpu_config_t CONFIG = EXAMPLE_CONFIG
@@ -35,9 +37,13 @@ module icache
         input logic rst,
         input logic ifence,
         input logic icache_on,
-        mem_interface.ro_master mem,
+        //mem_interface.ro_master mem,
+        master_ro_mem_interface_input mem_input,
+        master_ro_mem_interface_output mem_output,
 
-        memory_sub_unit_interface.responder fetch_sub
+        //memory_sub_unit_interface.responder fetch_sub
+        responder_memory_sub_unit_interface_input fetch_sub_input,
+        responder_memory_sub_unit_interface_output fetch_sub_output,
     );
 
     localparam derived_cache_config_t SCONFIG = get_derived_cache_params(CONFIG, CONFIG.ICACHE, CONFIG.ICACHE_ADDR);
