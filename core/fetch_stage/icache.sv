@@ -26,6 +26,15 @@ module icache
     import riscv_types::*;
     import cva5_types::*;
     import cache_functions_pkg::*;
+    localparam int TAG_W        = SCONFIG.TAG_W;
+    localparam int LINE_W       = SCONFIG.LINE_ADDR_W;
+    localparam int SUB_LINE_W   = SCONFIG.SUB_LINE_ADDR_W;
+    
+    // "Simulazione" oggetto addr_utils usando macro
+    `define addr_utils_getTag(addr) getTag#(.TAG_W(TAG_W), .LINE_W(LINE_W), .SUB_LINE_W(SUB_LINE_W))(addr)
+    `define addr_utils_getTagLineAddr(addr) getTagLineAddr#(.LINE_W(LINE_W), .SUB_LINE_W(SUB_LINE_W))(addr)
+    `define addr_utils_getHashedLineAddr(addr, way) getHashedLineAddr#(.LINE_W(LINE_W), .SUB_LINE_W(SUB_LINE_W))(addr, way)
+    `define addr_utils_getDataLineAddr(addr) getDataLineAddr#(.LINE_W(LINE_W), .SUB_LINE_W(SUB_LINE_W))(addr)
 
 
     # (
@@ -49,7 +58,7 @@ module icache
     localparam derived_cache_config_t SCONFIG = get_derived_cache_params(CONFIG, CONFIG.ICACHE, CONFIG.ICACHE_ADDR);
     localparam bit [SCONFIG.SUB_LINE_ADDR_W-1:0] END_OF_LINE_COUNT = SCONFIG.SUB_LINE_ADDR_W'(CONFIG.ICACHE.LINE_W-1);
 
-    cache_functions_interface #(.TAG_W(SCONFIG.TAG_W), .LINE_W(SCONFIG.LINE_ADDR_W), .SUB_LINE_W(SCONFIG.SUB_LINE_ADDR_W)) addr_utils();
+    //cache_functions_interface #(.TAG_W(SCONFIG.TAG_W), .LINE_W(SCONFIG.LINE_ADDR_W), .SUB_LINE_W(SCONFIG.SUB_LINE_ADDR_W)) addr_utils();
 
     logic ifence_in_progress;
     logic[SCONFIG.LINE_ADDR_W-1:0] ifence_counter;
