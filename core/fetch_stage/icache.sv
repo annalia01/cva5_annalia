@@ -85,7 +85,13 @@ module icache
     logic second_cycle;
     logic [31:0] second_cycle_addr;
 
-    fifo_interface #(.DATA_TYPE(logic[31:0])) input_fifo();
+    //fifo_interface #(.DATA_TYPE(logic[31:0])) input_fifo();
+    enqueue_fifo_interface_input input_fifo_enqueue_input;
+    enqueue_fifo_interface_output input_fifo_enqueue_output;
+    dequeue_fifo_interface_input input_fifo_dequeue_input;
+    dequeue_fifo_interface_output input_fifo_dequeue_output;
+    structure_fifo_interface_input input_fifo_structure_input;
+    structure_fifo_interface_output input_fifo_structure_output;
 
     logic new_request;
     logic [31:0] new_request_addr;
@@ -96,20 +102,21 @@ module icache
     //On the second cycle of a request hit/miss determination is performed
     //On a miss, the memory request starts on the third cycle
 
-    assign new_request = (fetch_sub.new_request | input_fifo.valid) & ((~request_in_progress | tag_hit) & ~linefill_in_progress);
+    assign new_request = (fetch_sub_input.new_request | input_fifo_dequeue_input.valid) & ((~request_in_progress | tag_hit) & ~linefill_in_progress);
 
-    assign input_fifo.push = fetch_sub.new_request & (~new_request | input_fifo.valid);
-    assign input_fifo.potential_push = input_fifo.push;
-    assign input_fifo.pop = new_request & input_fifo.valid;
-    assign input_fifo.data_in = fetch_sub.addr;
+    assign input_fifo_enqueue_output.push = fetch_sub_input.new_request & (~new_request | input_fifo_dequeue_input.valid);
+    assign input_fifo_enqueue_output.potential_push = input_fifo_structure_input.push;
+    assign input_fifo_dequeue_output.pop = new_request & input_fifo_dequeue_input.valid;
+    assign input_fifo_enqueue_output.data_in = fetch_sub_input.addr;
 
-    assign new_request_addr = input_fifo.valid ? input_fifo.data_out : fetch_sub.addr;
+    assign new_request_addr = input_fifo_dequeue_input.valid ? input_fifo_dequeue_input.data_out : fetch_sub_input.addr;
 
     cva5_fifo #(.DATA_TYPE(logic[31:0]), .FIFO_DEPTH(2))
     cache_input_fifo (
         .clk (clk), 
         .rst (rst), 
-        .fifo (input_fifo)
+        .fifo_input (input_fifo_structure_input),
+        .fifo_output (input_fifo_structure_output)
     );
 
     ////////////////////////////////////////////////////
@@ -140,7 +147,7 @@ module icache
         if (rst)
             request_in_progress <= 0;
         else
-            request_in_progress <= (request_in_progress & ~fetch_sub.data_valid) | new_request;
+            request_in_progress <= (request_in_progress & ~fetch_sub_input.data_valid) | new_request;
     end
 
     assign fetch_sub.ready = ~input_fifo.full & ~ifence_in_progress;
@@ -231,9 +238,9 @@ module icache
         .COL_WIDTH(32),
         .PIPELINE_DEPTH(0)
     ) idata_bank (
-        .a_en(mem.rvalid),
+        .a_en(mem_input.rvalid),
         .a_wbe(tag_update_way),
-        .a_wdata({CONFIG.ICACHE.WAYS{mem.rdata}}),
+        .a_wdata({CONFIG.ICACHE.WAYS{mem_input.rdata}}),
         .a_addr(addr_utils.getDataLineAddr({second_cycle_addr[31:SCONFIG.SUB_LINE_ADDR_W+2], word_count, 2'b0})),
         .b_en(new_request),
         .b_addr(addr_utils.getDataLineAddr(new_request_addr)),
@@ -249,11 +256,11 @@ module icache
         if (rst)
             word_count <= 0;
         else
-            word_count <= word_count + SCONFIG.SUB_LINE_ADDR_W'(mem.rvalid);
+            word_count <= word_count + SCONFIG.SUB_LINE_ADDR_W'(mem_input.rvalid);
     end
 
-    assign miss_data_valid = request_in_progress & mem.rvalid & is_target_word;
-    assign line_complete = mem.rvalid & (word_count == END_OF_LINE_COUNT);
+    assign miss_data_valid = request_in_progress & mem_input.rvalid & is_target_word;
+    assign line_complete = mem_input.rvalid & (word_count == END_OF_LINE_COUNT);
 
     ////////////////////////////////////////////////////
     //Output muxing
@@ -263,7 +270,7 @@ module icache
     logic [31:0] output_array [OMUX_W];
     always_comb begin
         priority_vector[0] = miss_data_valid;
-        output_array[0] = mem.rdata;
+        output_array[0] = mem_input.rdata;
         for (int i = 0; i < CONFIG.ICACHE.WAYS; i++) begin
             priority_vector[i+1] = tag_hit_way[i];
             output_array[i+1] = data_out[i];
@@ -275,8 +282,8 @@ module icache
         .priority_vector (priority_vector),
         .encoded_result (output_sel)
     );
-    assign fetch_sub.data_out = output_array[output_sel];
-    assign fetch_sub.data_valid = miss_data_valid | tag_hit;
+    assign fetch_sub_output.data_out = output_array[output_sel];
+    assign fetch_sub_output.data_valid = miss_data_valid | tag_hit;
 
     ////////////////////////////////////////////////////
     //End of Implementation
@@ -285,11 +292,11 @@ module icache
     ////////////////////////////////////////////////////
     //Assertions
     icache_l1_arb_ack_assertion:
-        assert property (@(posedge clk) disable iff (rst) mem.ack |-> mem.request)
+    assert property (@(posedge clk) disable iff (rst) mem_input.ack |-> mem_input.request)
         else $error("Spurious icache ack received from arbiter!");
 
     icache_l1_arb_data_valid_assertion:
-        assert property (@(posedge clk) disable iff (rst) mem.rvalid |-> linefill_in_progress)
+        assert property (@(posedge clk) disable iff (rst) mem_input.rvalid |-> linefill_in_progress)
         else $error("Spurious icache data received from arbiter!");
 
 endmodule
