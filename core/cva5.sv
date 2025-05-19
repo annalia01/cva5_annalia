@@ -388,17 +388,23 @@ module cva5
         .pc_id_assigned (pc_id_assigned),
         .fetch_complete (fetch_complete),
         .fetch_metadata (fetch_metadata),
-        .bp (bp),
-        .ras (ras),
+        .bp_input (bp_fetch_input),
+        .bp_output (bp_fetch_output),
+        .ras_input (ras_fetch_input),
+        .ras_output (ras_fetch_output),
         .early_branch_flush (early_branch_flush),
         .early_branch_flush_ras_adjust (early_branch_flush_ras_adjust),
         .if_pc (if_pc),
         .fetch_instruction (fetch_instruction),
-        .instruction_bram (instruction_bram),
-        .iwishbone (iwishbone),
+        .instruction_bram_input (instruction_bram_input),
+        .instruction_bram_output (instruction_bram_input),
+        .iwishbone_input (iwishbone_input),
+        .iwishbone_output (iwishbone_output),
         .icache_on ('1),
-        .tlb (itlb),
-        .mem (icache_mem)
+        .tlb_input (itlb_tlb_input),
+        .tlb_output (itlb_tlb_output),
+        .mem_input  (icache_mem_input_master_mem),
+        .mem_output (icache_mem_output_master_mem)
     );
 
     branch_predictor #(.CONFIG(CONFIG))
