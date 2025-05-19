@@ -257,9 +257,10 @@ module fetch
     attributes_fifo (
         .clk (clk), 
         .rst (rst), 
-        .fifo (fetch_attr_fifo)
+        .fifo_input (fetch_attr_fifo_structure_input),
+        .fifo_output (fetch_attr_fifo_structure_output),
     );
-    assign fetch_attr = fetch_attr_fifo.data_out;
+    assign fetch_attr = fetch_attr_fifo_dequeue_input.data_out;
     assign early_flush_pc = fetch_attr.early_flush_pc;
 
     assign inflight_count_next = inflight_count + MAX_OUTSTANDING_REQUESTS_W'(fetch_attr_fifo.push) - MAX_OUTSTANDING_REQUESTS_W'(fetch_attr_fifo.pop);
@@ -275,7 +276,7 @@ module fetch
             flush_count <= 0;
         else if (gc.fetch_flush | early_branch_flush)
             flush_count <= inflight_count_next;
-        else if (|flush_count & fetch_attr_fifo.pop)
+        else if (|flush_count & fetch_attr_fifo_structure_input.pop)
             flush_count <= flush_count - 1;
     end
 
@@ -285,21 +286,22 @@ module fetch
     //for any sub unit.  That request can either be completed or aborted.
     //In either case, data_valid must NOT be asserted.
     generate for (i=0; i < NUM_SUB_UNITS; i++) begin : gen_fetch_sources
-        assign sub_unit[i].new_request = fetch_attr_fifo.push & sub_unit_address_match[i] & ~tlb.is_fault;
-        assign sub_unit[i].addr = tlb.physical_address;
-        assign sub_unit[i].re = 1;
-        assign sub_unit[i].we = 0;
-        assign sub_unit[i].be = '0;
-        assign sub_unit[i].data_in = '0;
+        assign sub_unit_responder_output[i].new_request = fetch_attr_fifo_structure_input.push & sub_unit_address_match[i] & ~tlb_input.is_fault;
+        assign sub_unit_responder_output[i].addr = tlb_input.physical_address;
+        assign sub_unit_responder_output[i].re = 1;
+        assign sub_unit_responder_output[i].we = 0;
+        assign sub_unit_responder_output[i].be = '0;
+        assign sub_unit_responder_output[i].data_in = '0;
+        
 
-        assign unit_ready[i] = sub_unit[i].ready;
-        assign unit_data_valid[i] = sub_unit[i].data_valid;
-        assign unit_data_array[i] = sub_unit[i].data_out;
+        assign unit_ready[i] = sub_unit_responder_input[i].ready;
+        assign unit_data_valid[i] = sub_unit_responder_input[i].data_valid;
+        assign unit_data_array[i] = sub_unit_responder_input[i].data_out;
     end
     endgenerate
 
     generate if (CONFIG.INCLUDE_ILOCAL_MEM) begin : gen_fetch_local_mem
-        assign sub_unit_address_match[LOCAL_MEM_ID] = ilocal_mem_addr_utils.address_range_check(tlb.physical_address);
+        assign sub_unit_address_match[LOCAL_MEM_ID] = ilocal_mem_addr_utils.address_range_check(tlb_input.physical_address);
         local_mem_sub_unit i_local_mem (
             .clk (clk), 
             .rst (rst),
@@ -314,7 +316,7 @@ module fetch
     endgenerate
 
     generate if (CONFIG.INCLUDE_IBUS) begin : gen_fetch_ibus
-        assign sub_unit_address_match[BUS_ID] = ibus_addr_utils.address_range_check(tlb.physical_address);
+        assign sub_unit_address_match[BUS_ID] = ibus_addr_utils.address_range_check(tlb_input.physical_address);
         wishbone_master iwishbone_bus (
             .clk (clk),
             .rst (rst),
