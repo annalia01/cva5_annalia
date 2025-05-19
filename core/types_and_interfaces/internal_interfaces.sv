@@ -349,20 +349,24 @@ endpackage
 
 package addr_utils_pkg;
 
-    // Parametri di default, modificabili al momento dell'import
-    parameter logic [31:0] BASE_ADDR    = 32'h00000000;
-    parameter logic [31:0] UPPER_BOUND = 32'hFFFFFFFF;
+    typedef struct packed {
+        logic [31:0] base_addr;
+        logic [31:0] upper_bound;
+    } addr_range_t;
 
-    // Funzione per controllare se un indirizzo è nel range
-    function logic address_range_check(input logic [31:0] addr);
+    function logic address_range_check(
+        input logic [31:0] addr,
+        input addr_range_t range
+    );
         /* verilator lint_off UNSIGNED */
         /* verilator lint_off CMPCONST */
-        return (addr >= BASE_ADDR) && (addr <= UPPER_BOUND);
+        return (addr >= range.base_addr) && (addr <= range.upper_bound);
         /* verilator lint_on UNSIGNED */
         /* verilator lint_on CMPCONST */
     endfunction
 
 endpackage
+
 
 typedef struct packed {
     logic new_request;
