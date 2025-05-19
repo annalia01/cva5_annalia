@@ -34,12 +34,19 @@ module wishbone_master
         input logic rst,
 
         output logic write_outstanding,
-        wishbone_interface.master wishbone,
-
+        //wishbone_interface.master wishbone,
+        master_wishbone_interface_output wishbone_output,
+        master_wishbone_interface_input wishbone_input,
+        
         input logic amo,
         input amo_t amo_type,
-        amo_interface.subunit amo_unit,
-        memory_sub_unit_interface.responder ls
+        //amo_interface.subunit amo_unit,
+        subunit_amo_interface_input amo_unit_input,
+        subunit_amo_interface_output amo_unit_output,
+        
+        //memory_sub_unit_interface.responder ls
+        responder_memory_sub_unit_interface_input ls_input,
+        responder_memory_sub_unit_interface_output ls_output
     );
 
     ////////////////////////////////////////////////////
@@ -59,116 +66,116 @@ module wishbone_master
     logic request_is_sc;
     assign request_is_sc = amo & amo_type == AMO_SC_FN5;
 
-    assign amo_unit.set_reservation = ls.new_request & amo & amo_type == AMO_LR_FN5;
-    assign amo_unit.clear_reservation = ls.new_request;
-    assign amo_unit.reservation = ls.addr;
-    assign amo_unit.rs1 = ls.data_out;
-    assign amo_unit.rs2 = wishbone.dat_w;
+    assign amo_unit_output.set_reservation = ls_input.new_request & amo & amo_type == AMO_LR_FN5;
+    assign amo_unit_output.clear_reservation = ls_input.new_request;
+    assign amo_unit_output.reservation = ls_input.addr;
+    assign amo_unit_output.rs1 = ls_input.data_out;
+    assign amo_unit_output.rs2 = wishbone_input.dat_w;
 
-    assign wishbone.cti = '0;
-    assign wishbone.bte = '0;
+    assign wishbone_output.cti = '0;
+    assign wishbone_output.bte = '0;
 
     always_ff @(posedge clk) begin
-        wishbone.adr[1:0] <= '0;
+        wishbone_output.adr[1:0] <= '0;
         unique case (current_state)
             READY : begin //Accept any request
-                ls.ready <= ~ls.new_request | request_is_sc;
-                ls.data_out <= 32'b1;
-                ls.data_valid <= ls.new_request & request_is_sc;
-                wishbone.adr[31:2] <= ls.addr[31:2];
-                wishbone.sel <= ls.we ? ls.be : '1;
-                wishbone.dat_w <= ls.data_in;
-                wishbone.we <= ls.we;
-                wishbone.stb <= ls.new_request & ~request_is_sc;
-                wishbone.cyc <= ls.new_request & ~request_is_sc;
-                write_outstanding <= ls.new_request & (ls.we | amo);
-                amo_unit.rmw_valid <= 0;
-                amo_unit.op <= amo_type;
+                ls_output.ready <= ~ls_input.new_request | request_is_sc;
+                ls_output.data_out <= 32'b1;
+                ls_output.data_valid <= ls_input.new_request & request_is_sc;
+                wishbone_output.adr[31:2] <= ls_input.addr[31:2];
+                wishbone_output.sel <= ls_input.we ? ls_input.be : '1;
+                wishbone_output.dat_w <= ls_input.data_in;
+                wishbone_output.we <= ls_input.we;
+                wishbone_output.stb <= ls_input.new_request & ~request_is_sc;
+                wishbone_output.cyc <= ls_input.new_request & ~request_is_sc;
+                write_outstanding <= ls_input.new_request & (ls.we | amo);
+                amo_unit_output.rmw_valid <= 0;
+                amo_unit_output.op <= amo_type;
                 cyc_counter <= amo ? 1 : 0;
-                if (ls.new_request & (~amo | amo_type == AMO_LR_FN5))
+                if (ls_input.new_request & (~amo | amo_type == AMO_LR_FN5))
                     current_state <= REQUESTING;
-                else if (ls.new_request & amo & amo_type != AMO_SC_FN5)
+                else if (ls_input.new_request & amo & amo_type != AMO_SC_FN5)
                     current_state <= REQUESTING_AMO_R;
             end
             REQUESTING : begin //Wait for response
-                ls.ready <= wishbone.ack;
-                ls.data_out <= wishbone.dat_r;
-                ls.data_valid <= ~wishbone.we & wishbone.ack;
-                wishbone.stb <= ~wishbone.ack;
-                wishbone.cyc <= ~wishbone.ack | cyc_counter[0];
-                write_outstanding <= wishbone.we & ~wishbone.ack;
-                if (wishbone.ack)
+                ls_output.ready <= wishbone_input.ack;
+                ls_output.data_out <= wishbone_input.dat_r;
+                ls_output.data_valid <= ~wishbone_input.we & wishbone_input.ack;
+                wishbone_output.stb <= ~wishbone_input.ack;
+                wishbone_output.cyc <= ~wishbone_input.ack | cyc_counter[0];
+                write_outstanding <= wishbone_input.we & ~wishbone_input.ack;
+                if (wishbone_input.ack)
                     current_state <= cyc_counter[0] ? READY_LR : READY;
             end
             REQUESTING_AMO_R : begin //Read for an AMO
                 if (INCLUDE_AMO) begin
-                    ls.data_out <= wishbone.dat_r;
-                    ls.data_valid <= wishbone.ack;
-                    wishbone.stb <= ~wishbone.ack;
-                    amo_unit.rmw_valid <= wishbone.ack;
-                    if (wishbone.ack)
+                    ls_output.data_out <= wishbone_input.dat_r;
+                    ls_output.data_valid <= wishbone_input.ack;
+                    wishbone_output.stb <= ~wishbone_input.ack;
+                    amo_unit_output.rmw_valid <= wishbone_input.ack;
+                    if (wishbone_input.ack)
                         current_state <= REQUESTING_AMO_M;
                 end
             end
             REQUESTING_AMO_M : begin //One cycle for computing the AMO write value
                 if (INCLUDE_AMO) begin
-                    ls.data_valid <= 0;
-                    wishbone.dat_w <= amo_unit.rd;
-                    wishbone.stb <= 1;
-                    wishbone.we <= 1;
-                    amo_unit.rmw_valid <= 0;
+                    ls_output.data_valid <= 0;
+                    wishbone_output.dat_w <= amo_unit_input.rd;
+                    wishbone_output.stb <= 1;
+                    wishbone_output.we <= 1;
+                    amo_unit_output.rmw_valid <= 0;
                     current_state <= REQUESTING_AMO_W;
                 end
             end
             REQUESTING_AMO_W : begin //Write for an AMO
                 if (INCLUDE_AMO) begin
-                    ls.ready <= wishbone.ack;
-                    wishbone.cyc <= ~wishbone.ack;
-                    wishbone.stb <= ~wishbone.ack;
-                    write_outstanding <= ~wishbone.ack;
-                    if (wishbone.ack)
+                    ls_output.ready <= wishbone_input.ack;
+                    wishbone_output.cyc <= ~wishbone_input.ack;
+                    wishbone_output.stb <= ~wishbone_input.ack;
+                    write_outstanding <= ~wishbone_input.ack;
+                    if (wishbone_input.ack)
                         current_state <= READY;
                 end
             end
             READY_LR : begin //Cyc is held; hold for LR_WAIT cycles
                 if (INCLUDE_AMO) begin
-                    ls.ready <= ~ls.new_request | (request_is_sc & ~amo_unit.reservation_valid);
-                    ls.data_out <= {31'b0, ~amo_unit.reservation_valid};
-                    ls.data_valid <= ls.new_request & request_is_sc;
-                    wishbone.adr[31:2] <= ls.addr[31:2];
-                    wishbone.sel <= ls.we ? ls.be : '1;
-                    wishbone.dat_w <= ls.data_in;
-                    wishbone.we <= ls.we | request_is_sc;
-                    wishbone.stb <= ls.new_request & ~(request_is_sc & ~amo_unit.reservation_valid);
-                    write_outstanding <= ls.new_request & (ls.we | amo);
-                    amo_unit.rmw_valid <= 0;
-                    amo_unit.op <= amo_type;
+                    ls_output.ready <= ~ls_input.new_request | (request_is_sc & ~amo_unit_input.reservation_valid);
+                    ls_output.data_out <= {31'b0, ~amo_unit_input.reservation_valid};
+                    ls_output.data_valid <= ls_input.new_request & request_is_sc;
+                    wishbone_output.adr[31:2] <= ls_input.addr[31:2];
+                    wishbone_output.sel <= ls_input.we ? ls.be : '1;
+                    wishbone_output.dat_w <= ls_input.data_in;
+                    wishbone_output.we <= ls_input.we | request_is_sc;
+                    wishbone_output.stb <= ls_input.new_request & ~(request_is_sc & ~amo_unit.reservation_valid);
+                    write_outstanding <= ls_input.new_request & (ls.we | amo);
+                    amo_unit_output.rmw_valid <= 0;
+                    amo_unit_output.op <= amo_type;
 
                     if (ls.new_request)
-                        wishbone.cyc <= ~(request_is_sc & ~amo_unit.reservation_valid);
+                        wishbone_output.cyc <= ~(request_is_sc & ~amo_unit_input.reservation_valid);
                     else if (32'(cyc_counter) == LR_WAIT-1)
-                        wishbone.cyc <= 0;
+                        wishbone_output.cyc <= 0;
 
                     cyc_counter <= cyc_counter + 1;
 
                     if (ls.new_request & (~amo | amo_type == AMO_LR_FN5))
                         current_state <= REQUESTING;
-                    else if (ls.new_request & amo & amo_type != AMO_SC_FN5)
+                    else if (ls_input.new_request & amo & amo_type != AMO_SC_FN5)
                         current_state <= REQUESTING_AMO_R;
-                    else if (ls.new_request & amo & amo_type == AMO_SC_FN5 & amo_unit.reservation_valid)
+                    else if (ls_input.new_request & amo & amo_type == AMO_SC_FN5 & amo_unit_input.reservation_valid)
                         current_state <= REQUESTING_SC;
-                    else if (32'(cyc_counter) == LR_WAIT-1 | ls.new_request)
+                    else if (32'(cyc_counter) == LR_WAIT-1 | ls_input.new_request)
                         current_state <= READY;
                 end
             end
             REQUESTING_SC : begin //Exclusive write
                 if (INCLUDE_AMO) begin
-                    ls.ready <= wishbone.ack;
-                    ls.data_valid <= 0;
-                    wishbone.stb = ~wishbone.ack;
-                    wishbone.cyc = ~wishbone.ack;
-                    write_outstanding <= ~wishbone.ack;
-                    if (wishbone.ack)
+                    ls_output.ready <= wishbone_input.ack;
+                    ls_output.data_valid <= 0;
+                    wishbone_output.stb = ~wishbone_input.ack;
+                    wishbone_output.cyc = ~wishbone_input.ack;
+                    write_outstanding <= ~wishbone_input.ack;
+                    if (wishbone_input.ack)
                         current_state <= REQUESTING;
                 end
             end
