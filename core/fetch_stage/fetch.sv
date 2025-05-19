@@ -85,10 +85,29 @@ module fetch
 
     localparam MAX_OUTSTANDING_REQUESTS = 2;
     localparam MAX_OUTSTANDING_REQUESTS_W = $clog2(MAX_OUTSTANDING_REQUESTS);
+    
     //Subunit signals
-    addr_utils_interface #(CONFIG.ILOCAL_MEM_ADDR.L, CONFIG.ILOCAL_MEM_ADDR.H) ilocal_mem_addr_utils ();
-    addr_utils_interface #(CONFIG.ICACHE_ADDR.L, CONFIG.ICACHE_ADDR.H) icache_addr_utils ();
-    addr_utils_interface #(CONFIG.IBUS_ADDR.L, CONFIG.IBUS_ADDR.H) ibus_addr_utils ();
+    //addr_utils_interface #(CONFIG.ILOCAL_MEM_ADDR.L, CONFIG.ILOCAL_MEM_ADDR.H) ilocal_mem_addr_utils ();
+    //addr_utils_interface #(CONFIG.ICACHE_ADDR.L, CONFIG.ICACHE_ADDR.H) icache_addr_utils ();
+    //addr_utils_interface #(CONFIG.IBUS_ADDR.L, CONFIG.IBUS_ADDR.H) ibus_addr_utils ();
+    import addr_utils_pkg::*;
+
+    addr_range_t ilocal_mem_addr_utils = '{
+        base_addr: CONFIG.ILOCAL_MEM_ADDR.L,
+        upper_bound: CONFIG.ILOCAL_MEM_ADDR.H
+    };
+    
+    addr_range_t icache_addr_utils = '{
+        base_addr: CONFIG.ICACHE_ADDR.L,
+        upper_bound: CONFIG.ICACHE_ADDR.H
+    };
+    
+    addr_range_t ibus_addr_utils = '{
+        base_addr: CONFIG.IBUS_ADDR.L,
+        upper_bound: CONFIG.IBUS_ADDR.H
+    };
+
+    
 
     //memory_sub_unit_interface sub_unit[NUM_SUB_UNITS-1:0]();
     controller_memory_sub_unit_interface_input sub_unit_controller_input[NUM_SUB_UNITS-1:0],
@@ -134,7 +153,14 @@ module fetch
     logic [31:0] pc;
 
     logic flush_or_rst;
-    fifo_interface #(.DATA_TYPE(fetch_attributes_t)) fetch_attr_fifo();
+    //fifo_interface #(.DATA_TYPE(fetch_attributes_t)) fetch_attr_fifo();
+
+    enqueue_fifo_interface_input fetch_attr_fifo_enqueue_input;
+    enqueue_fifo_interface_output fetch_attr_fifo_enqueue_output;
+    dequeue_fifo_interface_input fetch_attr_fifo_dequeue_input;
+    dequeue_fifo_interface_output fetch_attr_fifo_dequeue_output;
+    structure_fifo_interface_input fetch_attr_fifo_structure_input;
+    structure_fifo_interface_output fetch_attr_fifo_structure_output;
 
     logic update_pc;
     logic new_mem_request;
@@ -158,13 +184,13 @@ module fetch
 
     priority_encoder #(.WIDTH(5))
     pc_sel_encoder (
-        .priority_vector ({1'b1, bp.use_prediction, early_branch_flush, branch_flush, gc.pc_override}),
+        .priority_vector ({1'b1, bp_input.use_prediction, early_branch_flush, branch_flush, gc.pc_override}),
         .encoded_result (pc_sel)
     );
     assign pc_mux[0] = gc.pc;
-    assign pc_mux[1] = bp.branch_flush_pc;
+    assign pc_mux[1] = bp_input.branch_flush_pc;
     assign pc_mux[2] = early_flush_pc;
-    assign pc_mux[3] = bp.is_return ? ras.addr : bp.predicted_pc;
+    assign pc_mux[3] = bp_input.is_return ? ras_input.addr : bp_input.predicted_pc;
     assign pc_mux[4] = pc_plus_4;
     assign next_pc = pc_mux[pc_sel];
 
@@ -174,38 +200,38 @@ module fetch
     always_ff @(posedge clk) begin
         if (flush_or_rst)
             exception_pending <= 0;
-        else if ((tlb.is_fault & ~fetch_attr_fifo.full) | (new_mem_request & ~address_valid))
+        else if ((tlb_input.is_fault & ~fetch_attr_fifo_enqueue_input.full) | (new_mem_request & ~address_valid))
             exception_pending <= 1;
     end
 
-    assign bp.new_mem_request = update_pc;
-    assign bp.next_pc = next_pc;
-    assign bp.if_pc = pc;
-    assign bp.pc_id = pc_id;
-    assign bp.pc_id_assigned = pc_id_assigned;
+    assign bp_output.new_mem_request = update_pc;
+    assign bp_output.next_pc = next_pc;
+    assign bp_output.if_pc = pc;
+    assign bp_output.pc_id = pc_id;
+    assign bp_output.pc_id_assigned = pc_id_assigned;
 
     ////////////////////////////////////////////////////
     //RAS support
     logic ras_update_permitted;
-    assign ras_update_permitted = bp.use_prediction & new_mem_request & ~(branch_flush | gc.pc_override | early_branch_flush);
+    assign ras_update_permitted = bp_input.use_prediction & new_mem_request & ~(branch_flush | gc.pc_override | early_branch_flush);
 
-    assign ras.pop = bp.is_return & ras_update_permitted;
-    assign ras.push = bp.is_call & ras_update_permitted;
-    assign ras.branch_fetched = bp.is_branch & ras_update_permitted;
-    assign ras.new_addr = pc_plus_4;
+    assign ras_output.pop = bp_input.is_return & ras_update_permitted;
+    assign ras_output.push = bp_input.is_call & ras_update_permitted;
+    assign ras_output.branch_fetched = bp_input.is_branch & ras_update_permitted;
+    assign ras_output.new_addr = pc_plus_4;
 
     ////////////////////////////////////////////////////
     //TLB
-    assign tlb.virtual_address = pc;
-    assign tlb.rnw = 1;
-    assign tlb.new_request = tlb.ready & pc_id_available & ~fetch_attr_fifo.full & (~exception_pending) & (~gc.fetch_hold);
+    assign tlb_output.virtual_address = pc;
+    assign tlb_output.rnw = 1;
+    assign tlb_output.new_request = tlb.ready & pc_id_available & ~fetch_attr_fifo.full & (~exception_pending) & (~gc.fetch_hold);
 
     //////////////////////////////////////////////
     //Issue Control Signals
     assign flush_or_rst = (rst | gc.fetch_flush | early_branch_flush);
 
-    assign new_mem_request = tlb.done & units_ready & ~gc.fetch_hold & ~fetch_attr_fifo.full;
-    assign pc_id_assigned = new_mem_request | (tlb.is_fault & ~fetch_attr_fifo.full);
+    assign new_mem_request = tlb_input.done & units_ready & ~gc.fetch_hold & ~fetch_attr_fifo_enqueue_input.full;
+    assign pc_id_assigned = new_mem_request | (tlb_input.is_fault & ~fetch_attr_fifo_enqueue_input.full);
 
     //////////////////////////////////////////////
     //Subunit Tracking
@@ -215,17 +241,17 @@ module fetch
         .one_hot (sub_unit_address_match), 
         .int_out (subunit_id)
     );
-    assign fetch_attr_fifo.data_in = '{
-        is_predicted_branch_or_jump : bp.use_prediction,
-        is_branch : (bp.use_prediction & bp.is_branch),
+    assign fetch_attr_fifo_enqueue_output.data_in = '{
+        is_predicted_branch_or_jump : bp_input.use_prediction,
+        is_branch : (bp_input.use_prediction & bp_input.is_branch),
         early_flush_pc : pc_plus_4,
         address_valid : address_valid,
-        mmu_fault : tlb.is_fault,
+        mmu_fault : tlb_input.is_fault,
         subunit_id : subunit_id
     };
-    assign fetch_attr_fifo.push = pc_id_assigned;
-    assign fetch_attr_fifo.potential_push = pc_id_assigned;
-    assign fetch_attr_fifo.pop = internal_fetch_complete;
+    assign fetch_attr_fifo_enqueue_output.push = pc_id_assigned;
+    assign fetch_attr_fifo_enqueue_output.potential_push = pc_id_assigned;
+    assign fetch_attr_fifo_dequeue_output.pop = internal_fetch_complete;
 
     cva5_fifo #(.DATA_TYPE(fetch_attributes_t), .FIFO_DEPTH(MAX_OUTSTANDING_REQUESTS))
     attributes_fifo (
