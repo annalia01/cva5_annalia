@@ -32,9 +32,17 @@ module local_mem_sub_unit
         output logic write_outstanding,
         input logic amo,
         input amo_t amo_type,
-        amo_interface.subunit amo_unit,
-        memory_sub_unit_interface.responder unit,
-        local_memory_interface.master local_mem
+        //amo_interface.subunit amo_unit,
+        subunit_amo_interface_input amo_unit_input,
+        subunit_amo_interface_output amo_unit_output,
+        
+        //memory_sub_unit_interface.responder unit,
+        responder_memory_sub_unit_interface_input unit_input,
+        responder_memory_sub_unit_interface_output unit_output,
+        
+        //local_memory_interface.master local_mem
+        master_local_memory_interface_input local_mem_input,
+        master_local_memory_interface_output local_mem_output
     );
 
     //If amo is tied to 0 and amo_unit is disconnected the tools can optimize most of the logic away
@@ -48,47 +56,47 @@ module local_mem_sub_unit
     
     assign write_outstanding = 0;
 
-    assign sc_valid = amo & amo_type == AMO_SC_FN5 & amo_unit.reservation_valid;
-    assign amo_unit.set_reservation = unit.new_request & amo & amo_type == AMO_LR_FN5;
-    assign amo_unit.clear_reservation = unit.new_request;
-    assign amo_unit.reservation = unit.addr;
+    assign sc_valid = amo & amo_type == AMO_SC_FN5 & amo_unit_input.reservation_valid;
+    assign amo_unit_output.set_reservation = unit_input.new_request & amo & amo_type == AMO_LR_FN5;
+    assign amo_unit_output.clear_reservation = unit_input.new_request;
+    assign amo_unit_output.reservation = unit_input.addr;
 
-    assign amo_unit.rmw_valid = rmw;
-    assign amo_unit.op = rmw_op;
-    assign amo_unit.rs1 = local_mem.data_out;
-    assign amo_unit.rs2 = rmw_rs2;
+    assign amo_unit_output.rmw_valid = rmw;
+    assign amo_unit_output.op = rmw_op;
+    assign amo_unit_output.rs1 = local_mem_input.data_out;
+    assign amo_unit_output.rs2 = rmw_rs2;
 
     always_comb begin
         if (rmw) begin
             unit.ready = 0;
-            local_mem.addr = rmw_addr;
-            local_mem.en = 1;
-            local_mem.be = '1;
-            local_mem.data_in = amo_unit.rd;
-            unit.data_out = local_mem.data_out;
+            local_mem_output.addr = rmw_addr;
+            local_mem_output.en = 1;
+            local_mem_output.be = '1;
+            local_mem_output.data_in = amo_unit_input.rd;
+            unit_output.data_out = local_mem_input.data_out;
         end else begin
-            unit.ready = 1;
-            local_mem.addr = unit.addr[31:2];
-            local_mem.en = unit.new_request;
-            local_mem.be = {4{unit.we | sc_valid}} & unit.be; //SC only writes when it succeeds
-            local_mem.data_in = unit.data_in;
-            unit.data_out = sc_valid_r ? 32'b1 : local_mem.data_out;
+            unit_output.ready = 1;
+            local_mem_output.addr = unit_input.addr[31:2];
+            local_mem_output.en = unit_input.new_request;
+            local_mem_output.be = {4{unit.we | sc_valid}} & unit_input.be; //SC only writes when it succeeds
+            local_mem_output.data_in = unit_input.data_in;
+            unit_output.data_out = sc_valid_r ? 32'b1 : local_mem_input.data_out;
         end
     end
 
     always_ff @(posedge clk) begin
         if (rst) begin
-            unit.data_valid <= 0;
+            unit_output.data_valid <= 0;
             rmw <= 0;
             sc_valid_r <= 0;
         end
         else begin
-            unit.data_valid <= unit.new_request & unit.re;
-            rmw <= unit.new_request & amo & ~(amo_type inside {AMO_LR_FN5, AMO_SC_FN5});
+            unit_output.data_valid <= unit_input.new_request & unit_input.re;
+            rmw <= unit_input.new_request & amo & ~(amo_type inside {AMO_LR_FN5, AMO_SC_FN5});
             sc_valid_r <= sc_valid;
         end
-        rmw_addr <= unit.addr[31:2];
-        rmw_rs2 <= unit.data_in;
+        rmw_addr <= unit_input.addr[31:2];
+        rmw_rs2 <= unit_input.data_in;
         rmw_op <= amo_type;
     end
 
