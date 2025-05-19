@@ -308,9 +308,12 @@ module fetch
             .write_outstanding (),
             .amo (1'b0),
             .amo_type ('x),
-            .amo_unit (unused),
-            .unit (sub_unit[LOCAL_MEM_ID]),
-            .local_mem (instruction_bram)
+            .amo_unit_input (unused_subunit_input),
+            .amo_unit_output (unused_subunit_output),
+            .unit_input (sub_unit_responder_input[LOCAL_MEM_ID]),
+            .unit_output (sub_unit_responder_output[LOCAL_MEM_ID]),
+            .local_mem_input (instruction_bram_input),
+            .local_mem_output (instruction_bram_output)
         );
     end
     endgenerate
@@ -323,9 +326,12 @@ module fetch
             .write_outstanding (),
             .amo (1'b0),
             .amo_type ('x),
-            .amo_unit (unused),
-            .wishbone (iwishbone),
-            .ls (sub_unit[BUS_ID])
+            .amo_unit_input (unused_subunit_input),
+            .amo_unit_output (unused_subunit_output),
+            .wishbone_input (iwishbone_input),
+            .wishbone_output (iwishbone_output),
+            .ls_input (sub_unit_responder_input[BUS_ID]),
+            .ls_output (sub_unit_responder_output[BUS_ID])
         );
     end
     endgenerate
