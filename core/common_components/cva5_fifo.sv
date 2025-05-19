@@ -34,7 +34,9 @@ module cva5_fifo
     (
         input logic clk,
         input logic rst,
-        fifo_interface.structure fifo
+        //fifo_interface.structure fifo
+        structure_fifo_interface_input fifo_input,
+        structure_fifo_interface_output fifo_output
     );
 
     localparam LOG2_FIFO_DEPTH = $clog2(FIFO_DEPTH);
