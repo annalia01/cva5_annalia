@@ -35,44 +35,56 @@ module ras
         input logic rst,
         input gc_outputs_t gc,
         input logic early_branch_flush_ras_adjust,
-        ras_interface.self ras
+        //ras_interface.self ras
+        self_ras_interface_input ras_input,
+        self_ras_interface_output ras_output
     );
 
     localparam RAS_DEPTH_W = $clog2(CONFIG.BP.RAS_ENTRIES);
     logic [RAS_DEPTH_W-1:0] read_index;
     logic [RAS_DEPTH_W-1:0] new_index;
-    fifo_interface #(.DATA_TYPE(logic[RAS_DEPTH_W-1:0])) ri_fifo();
+    //fifo_interface #(.DATA_TYPE(logic[RAS_DEPTH_W-1:0])) ri_fifo();
      ///////////////////////////////////////////////////////
-    
+
+    enqueue_fifo_interface_input ri_fifo_enqueue_input;
+    enqueue_fifo_interface_output ri_fifo_enqueue_output;
+    dequeue_fifo_interface_input ri_fifo_dequeue_input;
+    dequeue_fifo_interface_output ri_fifo_dequeue_output;
+    structure_fifo_interface_input ri_fifo_structure_input;
+    structure_fifo_interface_output ri_fifo_structure_output;
+
+
+ 
     //On a speculative branch, save the current stack pointer
     //Restored if branch is misspredicted (gc_fetch_flush)
     cva5_fifo #(.DATA_TYPE(logic[RAS_DEPTH_W-1:0]), .FIFO_DEPTH(MAX_IDS))
     read_index_fifo (
         .clk,
         .rst(rst | gc.fetch_flush | early_branch_flush_ras_adjust),
-        .fifo(ri_fifo)
+        .fifo_input(ri_fifo_structure_input),
+     .fifo_output(ri_fifo_structure_output)
     );
 
-    assign ri_fifo.data_in = read_index;
-    assign ri_fifo.push = ras.branch_fetched;
-    assign ri_fifo.potential_push = ras.branch_fetched;
-    assign ri_fifo.pop = ras.branch_retired & ri_fifo.valid; //Prevent popping from fifo if reset due to early_branch_flush_ras_adjust
+    assign ri_fifo_enqueue_output.data_in = read_index;
+    assign ri_fifo_enqueue_output.push = ras_input.branch_fetched;
+    assign ri_fifo_enqueue_output.potential_push = ras_input.branch_fetched;
+    assign ri_fifo_dequeue_output.pop = ras_input.branch_retired & ri_fifo_dequeue_input.valid; //Prevent popping from fifo if reset due to early_branch_flush_ras_adjust
 
     lutram_1w_1r #(.DATA_TYPE(logic[31:0]), .DEPTH(CONFIG.BP.RAS_ENTRIES))
     ras_stack (
         .clk(clk),
         .waddr(new_index),
         .raddr(read_index),
-        .ram_write(ras.push),
-        .new_ram_data(ras.new_addr),
-        .ram_data_out(ras.addr)
+     .ram_write(ras_input.push),
+     .new_ram_data(ras_input.new_addr),
+     .ram_data_out(ras_output.addr)
     );
 
     //Rolls over when full, most recent calls will be correct, but calls greater than depth
     //will be lost.
     logic [RAS_DEPTH_W-1:0] new_index_base;
-    assign new_index_base = (gc.fetch_flush & ri_fifo.valid) ? ri_fifo.data_out : read_index;
-    assign new_index = new_index_base + RAS_DEPTH_W'(ras.push) - RAS_DEPTH_W'(ras.pop);
+ assign new_index_base = (gc.fetch_flush & ri_fifo_dequeue_input.valid) ? ri_fifo_dequeue_input.data_out : read_index;
+ assign new_index = new_index_base + RAS_DEPTH_W'(ras_input.push) - RAS_DEPTH_W'(ras_input.pop);
     always_ff @ (posedge clk) begin
         read_index <= new_index;
     end
