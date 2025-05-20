@@ -27,9 +27,15 @@ module mmu
     (
         input logic clk,
         input logic rst,
-        mmu_interface.mmu mmu,
+        //mmu_interface.mmu mmu,
+        mmu_mmu_interface_input mmu_input,
+        mmu_mmu_interface_output mmu_output,
+        
         input logic abort_request,
-        mem_interface.ro_master mem
+        //mem_interface.ro_master mem
+
+        master_ro_mem_interface_input mem_input,
+        master_ro_mem_interface_output mem_output
     );
 
     typedef struct packed{
@@ -62,21 +68,21 @@ module mmu
 
     ////////////////////////////////////////////////////
     //L1 arbiter Interfrace
-    assign mem.rlen = '0;
+    assign mem_output.rlen = '0;
 
-    assign mem.request = (state[SEND_REQUEST_1] | state[SEND_REQUEST_2]) & ~abort_request;
+    assign mem_output.request = (state[SEND_REQUEST_1] | state[SEND_REQUEST_2]) & ~abort_request;
 
     //Page Table addresses
     always_ff @ (posedge clk) begin
         if (state[IDLE] | (mem.rvalid & ~discard_data)) begin
             if (state[IDLE])
-                mem.addr <= {mmu.satp_ppn[19:0], mmu.virtual_address[31:22]};
+                mem_output.addr <= {mmu_input.satp_ppn[19:0], mmu_input.virtual_address[31:22]};
             else
-                mem.addr <= {pte.ppn1[9:0], pte.ppn0, mmu.virtual_address[21:12]};
+                mem_output.addr <= {pte.ppn1[9:0], pte.ppn0, mmu_input.virtual_address[21:12]};
         end
     end
 
-    assign pte = mem.rdata;
+    assign pte = mem_input.rdata;
 
     ////////////////////////////////////////////////////
     //Supports unlimited tracking of aborted requests
@@ -87,7 +93,7 @@ module mmu
     logic delayed_abort_complete;
 
     assign delayed_abort = abort_request & (state[WAIT_REQUEST_1] | state[WAIT_REQUEST_2]);
-    assign delayed_abort_complete = (discard_data | abort_request) & mem.rvalid;
+    assign delayed_abort_complete = (discard_data | abort_request) & mem_input.rvalid;
     always_ff @ (posedge clk) begin
         if (rst)
             abort_tracking <= 0;
@@ -100,11 +106,11 @@ module mmu
 
     perms_check perm (
         .pte_perms(pte.perms),
-        .rnw(mmu.rnw),
-        .execute(mmu.execute),
-        .mxr(mmu.mxr),
-        .sum(mmu.sum),
-        .privilege(mmu.privilege),
+        .rnw(mmu_input.rnw),
+        .execute(mmu_input.execute),
+        .mxr(mmu_input.mxr),
+        .sum(mmu_input.sum),
+        .privilege(mmu_input.privilege),
         .valid(perms_valid)
     );
 
@@ -114,13 +120,13 @@ module mmu
         next_state = state;
         case (1'b1)
             state[IDLE] :
-                if (mmu.request & ~abort_queue_full)
+                if (mmu_input.request & ~abort_queue_full)
                     next_state = 2**SEND_REQUEST_1;
             state[SEND_REQUEST_1] : 
-                if (mem.ack)
+                if (mem_input.ack)
                     next_state = 2**WAIT_REQUEST_1;
             state[WAIT_REQUEST_1] :
-                if (mem.rvalid & ~discard_data) begin
+                if (mem_input.rvalid & ~discard_data) begin
                     if (~pte.perms.v | (~pte.perms.r & pte.perms.w)) //page not valid OR invalid xwr pattern
                         next_state = 2**COMPLETE_FAULT;
                     else if (pte.perms.v & (pte.perms.r | pte.perms.x)) begin//superpage (all remaining xwr patterns other than all zeros)
@@ -132,10 +138,10 @@ module mmu
                         next_state = 2**SEND_REQUEST_2;
                 end
             state[SEND_REQUEST_2] : 
-                if (mem.ack)
+                if (mem_input.ack)
                     next_state = 2**WAIT_REQUEST_2;
             state[WAIT_REQUEST_2] : 
-                if (mem.rvalid & ~discard_data) begin
+                if (mem_input.rvalid & ~discard_data) begin
                     if (~perms_valid | ~pte.perms.v | (~pte.perms.r & pte.perms.w)) //perm fail or invalid
                         next_state = 2**COMPLETE_FAULT;
                     else
@@ -159,22 +165,22 @@ module mmu
     ////////////////////////////////////////////////////
     //TLB return path
     always_ff @ (posedge clk) begin
-        if (mem.rvalid) begin
-            mmu.superpage <= state[WAIT_REQUEST_1];
-            mmu.perms.d <= pte.perms.d;
-            mmu.perms.a <= pte.perms.a;
-            mmu.perms.g <= pte.perms.g | (state[WAIT_REQUEST_2] & mmu.perms.g);
-            mmu.perms.u <= pte.perms.u;
-            mmu.perms.x <= pte.perms.x;
-            mmu.perms.w <= pte.perms.w;
-            mmu.perms.r <= pte.perms.r;
-            mmu.perms.v <= pte.perms.v;
-            mmu.upper_physical_address[19:10] <= pte.ppn1[9:0];
-            mmu.upper_physical_address[9:0] <= state[WAIT_REQUEST_2] ? pte.ppn0 : mmu.virtual_address[21:12];
+        if (mem_input.rvalid) begin
+            mmu_output.superpage <= state[WAIT_REQUEST_1];
+            mmu_output.perms.d <= pte.perms.d;
+            mmu_output.perms.a <= pte.perms.a;
+            mmu_output.perms.g <= pte.perms.g | (state[WAIT_REQUEST_2] & mmu_input.perms.g);
+            mmu_output.perms.u <= pte.perms.u;
+            mmu_output.perms.x <= pte.perms.x;
+            mmu_output.perms.w <= pte.perms.w;
+            mmu_output.perms.r <= pte.perms.r;
+            mmu_output.perms.v <= pte.perms.v;
+            mmu_output.upper_physical_address[19:10] <= pte.ppn1[9:0];
+            mmu_output.upper_physical_address[9:0] <= state[WAIT_REQUEST_2] ? pte.ppn0 : mmu_input.virtual_address[21:12];
         end
     end
-    assign mmu.write_entry = state[COMPLETE_SUCCESS];
-    assign mmu.is_fault = state[COMPLETE_FAULT];
+    assign mmu_output.write_entry = state[COMPLETE_SUCCESS];
+    assign mmu_output.is_fault = state[COMPLETE_FAULT];
 
     ////////////////////////////////////////////////////
     //End of Implementation
@@ -183,14 +189,14 @@ module mmu
     ////////////////////////////////////////////////////
     //Assertions
     mmu_spurious_l1_response:
-        assert property (@(posedge clk) disable iff (rst) (mem.rvalid) |-> (state[WAIT_REQUEST_1] | state[WAIT_REQUEST_2]))
+    assert property (@(posedge clk) disable iff (rst) (mem_input.rvalid) |-> (state[WAIT_REQUEST_1] | state[WAIT_REQUEST_2]))
         else $error("mmu recieved response without a request");
 
     //TLB request remains high until it recieves a response from the MMU unless
     //the transaction is aborted.  As such, if TLB request is low and we are not in the
     //IDLE state, then our current processor state has been corrupted
     mmu_tlb_state_mismatch:
-        assert property (@(posedge clk) disable iff (rst) (mmu.request) |-> (state[IDLE]))
+        assert property (@(posedge clk) disable iff (rst) (mmu_input.request) |-> (state[IDLE]))
         else $error("MMU and TLB state mismatch");
 
 endmodule
