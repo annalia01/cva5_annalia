@@ -39,7 +39,9 @@ module renamer
 
         //Decode
         input logic decode_advance,
-        renamer_interface.renamer decode,
+        //renamer_interface.renamer decode,
+        renamer_renamer_interface_input decode_input,
+        renamer_renamer_interface_output decode_output,
 
         //Issue stage
         input issue_packet_t issue,
@@ -60,7 +62,13 @@ module renamer
 
     logic [5:0] clear_index;
 
-    fifo_interface #(.DATA_TYPE(phys_addr_t)) free_list ();
+    //fifo_interface #(.DATA_TYPE(phys_addr_t)) free_list ();
+    enqueue_fifo_interface_input free_list_enqueue_input;
+    enqueue_fifo_interface_output free_list_enqueue_output;
+    dequeue_fifo_interface_input free_list_dequeue_input;
+    dequeue_fifo_interface_output free_list_dequeue_output;
+    structure_fifo_interface_input free_list_structure_input;
+    structure_fifo_interface_output free_list_structure_output;
 
     logic rename_valid;
     logic rollback;
@@ -70,7 +78,7 @@ module renamer
     //Zero register is never renamed
     //If a renamed destination is flushed in the issue stage, state is rolled back
     //When an instruction reaches the retire stage it either commits or reverts its renaming depending on whether the instruction retires or is discarded
-    assign rename_valid = (~gc.fetch_flush) & decode_advance & decode.uses_rd & (RENAME_ZERO | |decode.rd_addr);
+    assign rename_valid = (~gc.fetch_flush) & decode_advance & decode_input.uses_rd & (RENAME_ZERO | |decode_input.rd_addr);
 
     //Revert physcial address assignment on a flush
     assign rollback = gc.fetch_flush & issue.stage_valid & (RENAME_ZERO ? issue.fp_uses_rd : issue.uses_rd) & (RENAME_ZERO | |issue.rd_addr);
@@ -88,16 +96,17 @@ module renamer
     register_free_list #(.DATA_TYPE(phys_addr_t), .FIFO_DEPTH(32)) free_list_fifo (
         .clk (clk),
         .rst (rst),
-        .fifo (free_list),
+        .fifo_input (free_list_structure_input),
+        .fifo_output (free_list_structure_output),
         .rollback (rollback)
     );
 
     //During post reset init, initialize FIFO with free list (registers 32-63)
-    assign free_list.potential_push = (gc.init_clear & ~clear_index[5]) | (wb_retire.valid);
-    assign free_list.push = free_list.potential_push;
+    assign free_list_enqueue_output.potential_push = (gc.init_clear & ~clear_index[5]) | (wb_retire.valid);
+    assign free_list_enqueue_output.push = free_list_structure_input.potential_push;
 
-    assign free_list.data_in = gc.init_clear ? {1'b1, clear_index[4:0]} : (gc.rename_revert ? inuse_table_output.spec_phys_addr : inuse_table_output.previous_phys_addr);
-    assign free_list.pop = rename_valid;
+    assign free_list_enqueue_output.data_in = gc.init_clear ? {1'b1, clear_index[4:0]} : (gc.rename_revert ? inuse_table_output.spec_phys_addr : inuse_table_output.previous_phys_addr);
+    assign free_list_dequeue_output.pop = rename_valid;
 
     ////////////////////////////////////////////////////
     //Inuse table
@@ -147,9 +156,9 @@ module renamer
     );
 
     //Normal operation
-    assign spec_table_write_index_mux[0] = decode.rd_addr;
-    assign spec_table_next_mux[0].phys_addr = free_list.data_out;
-    assign spec_table_next_mux[0].wb_group = decode.rd_wb_group;
+    assign spec_table_write_index_mux[0] = decode_input.rd_addr;
+    assign spec_table_next_mux[0].phys_addr = free_list_dequeue_input.data_out;
+    assign spec_table_next_mux[0].wb_group = decode_input.rd_wb_group;
     //gc.rename_revert
     assign spec_table_write_index_mux[1] = inuse_table_output.rd_addr;
     assign spec_table_next_mux[1].phys_addr = inuse_table_output.previous_phys_addr;
@@ -167,7 +176,7 @@ module renamer
     assign spec_table_next = spec_table_next_mux[spec_table_sel];
 
     assign spec_table_read_addr[0] = spec_table_write_index;
-    assign spec_table_read_addr[1:READ_PORTS] = decode.rs_addr;
+    assign spec_table_read_addr[1:READ_PORTS] = decode_input.rs_addr;
 
     lutram_1w_mr #(
         .DATA_TYPE(spec_table_t),
@@ -191,10 +200,10 @@ module renamer
     ////////////////////////////////////////////////////
     //Renamed Outputs
     generate for (genvar i = 0; i < READ_PORTS; i++) begin : gen_renamed_addrs
-        assign decode.phys_rs_addr[i] = spec_table_read_data[i+1].phys_addr;
-        assign decode.rs_wb_group[i] = spec_table_read_data[i+1].wb_group;
+        assign decode_output.phys_rs_addr[i] = spec_table_read_data[i+1].phys_addr;
+        assign decode_output.rs_wb_group[i] = spec_table_read_data[i+1].wb_group;
     end endgenerate
-    assign decode.phys_rd_addr = RENAME_ZERO | |decode.rd_addr ? free_list.data_out : '0;
+    assign decode_output.phys_rd_addr = RENAME_ZERO | |decode_input.rd_addr ? free_list_dequeue_input.data_out : '0;
 
     ////////////////////////////////////////////////////
     //End of Implementation
@@ -203,10 +212,10 @@ module renamer
     ////////////////////////////////////////////////////
     //Assertions
     rename_rd_zero_assertion:
-        assert property (@(posedge clk) disable iff (rst || RENAME_ZERO) (decode.rd_addr == 0) |-> (decode.phys_rd_addr == 0)) else $error("rd zero renamed");
+    assert property (@(posedge clk) disable iff (rst || RENAME_ZERO) (decode_input.rd_addr == 0) |-> (decode_output.phys_rd_addr == 0)) else $error("rd zero renamed");
 
     for (genvar i = 0; i < READ_PORTS; i++) begin : rename_rs_zero_assertion
-        assert property (@(posedge clk) disable iff (rst || RENAME_ZERO) (decode.rs_addr[i] == 0) |-> (decode.phys_rs_addr[i] == 0)) else $error("rs zero renamed");
+        assert property (@(posedge clk) disable iff (rst || RENAME_ZERO) (decode_input.rs_addr[i] == 0) |-> (decode_output.phys_rs_addr[i] == 0)) else $error("rs zero renamed");
     end
 
 endmodule
