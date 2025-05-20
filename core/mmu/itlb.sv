@@ -38,8 +38,13 @@ module itlb
         input tlb_packet_t sfence,
         input logic abort_request,
         input logic [ASIDLEN-1:0] asid,
-        mmu_interface.tlb mmu,
-        tlb_interface.tlb tlb
+        //mmu_interface.tlb mmu,
+        tlb_mmu_interface_input mmu_input,
+        tlb_mmu_interface_output mmu_output,
+        
+        //tlb_interface.tlb tlb
+        tlb_tlb_interface_input tlb_input,
+        tlb_tlb_interface_output tlb_output
     );
     //////////////////////////////////////////
     localparam TAG_W = 20 - $clog2(DEPTH);
@@ -122,8 +127,8 @@ module itlb
     logic [WAY_W-1:0] hit_way;
     logic hit;
 
-    assign cmp_tag = sfence.valid ? sfence.addr[31-:TAG_W] : tlb.virtual_address[31-:TAG_W];
-    assign cmp_tag_s = sfence.valid ? sfence.addr[31-:TAG_W_S] : tlb.virtual_address[31-:TAG_W_S];
+    assign cmp_tag = sfence.valid ? sfence.addr[31-:TAG_W] : tlb_input.virtual_address[31-:TAG_W];
+    assign cmp_tag_s = sfence.valid ? sfence.addr[31-:TAG_W_S] : tlb_input.virtual_address[31-:TAG_W_S];
     assign cmp_asid = sfence.valid ? sfence.asid : asid;
 
     always_comb begin
@@ -151,11 +156,11 @@ module itlb
                 u : rdata[i].user,
                 default: 'x
             }),
-            .rnw(tlb.rnw),
+            .rnw(tlb_input.rnw),
             .execute(1'b1),
-            .mxr(mmu.mxr),
-            .sum(mmu.sum),
-            .privilege(mmu.privilege),
+            .mxr(mmu_input.mxr),
+            .sum(mmu_input.sum),
+            .privilege(mmu_input.privilege),
             .valid(perms_valid[i])
         );
     end endgenerate
@@ -166,10 +171,10 @@ module itlb
             u : rdata_s.user,
             default: 'x
         }),
-        .rnw(tlb.rnw),
+        .rnw(tlb_input.rnw),
         .execute(1'b1),
-        .mxr(mmu.mxr),
-        .sum(mmu.sum),
+        .mxr(mmu_input.mxr),
+        .sum(mmu_input.sum),
         .privilege(mmu.privilege),
         .valid(perms_valid_s)
     );
@@ -188,27 +193,27 @@ module itlb
             tlb_addr_s = sfence.addr_only ? sfence.addr[22 +: $clog2(DEPTH)] : flush_addr;
         end
         else begin
-            tlb_addr = tlb.virtual_address[12 +: $clog2(DEPTH)];
-            tlb_addr_s = tlb.virtual_address[22 +: $clog2(DEPTH)];
+            tlb_addr = tlb_input.virtual_address[12 +: $clog2(DEPTH)];
+            tlb_addr_s = tlb_input.virtual_address[22 +: $clog2(DEPTH)];
         end
     end
 
     assign wdata = '{
         valid : ~sfence.valid,
         asid : asid,
-        tag : tlb.virtual_address[31-:TAG_W],
-        ppn1 : mmu.upper_physical_address[19:10],
-        ppn0 : mmu.upper_physical_address[9:0],
-        globe : mmu.perms.g,
-        user : mmu.perms.u
+        tag : tlb_input.virtual_address[31-:TAG_W],
+        ppn1 : mmu_input.upper_physical_address[19:10],
+        ppn0 : mmu_input.upper_physical_address[9:0],
+        globe : mmu_input.perms.g,
+        user : mmu_input.perms.u
     };
     assign wdata_s = '{
         valid : ~sfence.valid,
         asid : asid,
-        tag : tlb.virtual_address[31-:TAG_W_S],
-        ppn1 : mmu.upper_physical_address[19:10],
-        globe : mmu.perms.g,
-        user : mmu.perms.u
+        tag : tlb_input.virtual_address[31-:TAG_W_S],
+        ppn1 : mmu_input.upper_physical_address[19:10],
+        globe : mmu_input.perms.g,
+        user : mmu_input.perms.u
     };
 
     always_comb begin
@@ -231,8 +236,8 @@ module itlb
                     write_s = (~rdata_s.globe & asid_hit_s) & tag_hit_s;
                 end
                 default: begin
-                    write[i] = mmu.write_entry & ~mmu.superpage & replacement_way[i];
-                    write_s = mmu.write_entry & mmu.superpage;
+                    write[i] = mmu_input.write_entry & ~mmu_input.superpage & replacement_way[i];
+                    write_s = mmu_input.write_entry & mmu_input.superpage;
                 end
             endcase
         end
@@ -247,16 +252,16 @@ module itlb
     always_ff @ (posedge clk) begin
         if (rst)
             request_in_progress <= 0;
-        else if (mmu.write_entry | mmu.is_fault | abort_request)
+        else if (mmu_input.write_entry | mmu_input.is_fault | abort_request)
             request_in_progress <= 0;
-        else if (mmu.request)
+        else if (mmu_input.request)
             request_in_progress <= 1;
     end
 
-    assign mmu.request = translation_on & tlb.new_request & ~hit & ~perm_fail;
-    assign mmu.execute = 1;
-    assign mmu.rnw = tlb.rnw;
-    assign mmu.virtual_address = tlb.virtual_address;
+    assign mmu_output.request = translation_on & tlb_input.new_request & ~hit & ~perm_fail;
+    assign mmu_output.execute = 1;
+    assign mmu_output.rnw = tlb_input.rnw;
+    assign mmu_output.virtual_address = tlb_input.virtual_address;
 
     //TLB interface
     logic mmu_request_complete;
@@ -264,23 +269,23 @@ module itlb
         if (rst)
             mmu_request_complete <= 0;
         else
-            mmu_request_complete <= mmu.write_entry & ~abort_request;
+            mmu_request_complete <= mmu_input.write_entry & ~abort_request;
     end
-    assign tlb.done = translation_on ? (hit & ~perm_fail & (tlb.new_request | mmu_request_complete)) : tlb.new_request;
-    assign tlb.ready = ~request_in_progress & ~mmu_request_complete;
-    assign tlb.is_fault = mmu.is_fault | (tlb.new_request & translation_on & perm_fail);
+    assign tlb_output.done = translation_on ? (hit & ~perm_fail & (tlb_input.new_request | mmu_request_complete)) : tlb_input.new_request;
+    assign tlb_output.ready = ~request_in_progress & ~mmu_request_complete;
+    assign tlb_output.is_fault = mmu_input.is_fault | (tlb_input.new_request & translation_on & perm_fail);
 
     always_comb begin
-        tlb.physical_address[11:0] = tlb.virtual_address[11:0];
+        tlb_output.physical_address[11:0] = tlb_input.virtual_address[11:0];
         if (~translation_on)
-            tlb.physical_address[31:12] = tlb.virtual_address[31:12];
+            tlb_output.physical_address[31:12] = tlb_input.virtual_address[31:12];
         else if (hit_ohot_s) begin
-            tlb.physical_address[21:12] = tlb.virtual_address[21:12];
-            tlb.physical_address[31:22] = rdata_s.ppn1;
+            tlb_output.physical_address[21:12] = tlb_input.virtual_address[21:12];
+            tlb_output.physical_address[31:22] = rdata_s.ppn1;
         end
         else begin
-            tlb.physical_address[21:12] = rdata[hit_way].ppn0;
-            tlb.physical_address[31:22] = rdata[hit_way].ppn1;
+            tlb_output.physical_address[21:12] = rdata[hit_way].ppn0;
+            tlb_output.physical_address[31:22] = rdata[hit_way].ppn1;
         end
     end
 
