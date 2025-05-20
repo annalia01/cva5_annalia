@@ -146,16 +146,16 @@ module cva5
     
     issue_packet_t issue;
     //register_file_issue_interface #(.NUM_WB_GROUPS(CONFIG.NUM_WB_GROUPS), .READ_PORTS(REGFILE_READ_PORTS), .DATA_WIDTH(32)) rf_issue();
-    register_file_issue_interface_register_file_input rf_issue_register_file_input;
-    register_file_issue_interface_register_file_output rf_issue_register_file_output;
-    register_file_issue_interface_issue_input rf_issue_issue_input;
-    register_file_issue_interface_issue_output rf_issue_issue_output;
+    register_file_register_file_issue_interface_input rf_issue_register_file_input;
+    register_file_register_file_issue_interface_output rf_issue_register_file_output;
+    issue_register_file_issue_interface_input rf_issue_issue_input;
+    issue_register_file_issue_interface_output rf_issue_issue_output;
     
     //register_file_issue_interface #(.NUM_WB_GROUPS(2), .READ_PORTS(3), .DATA_WIDTH(FLEN)) fp_rf_issue();
-    register_file_issue_interface_register_file_input fp_rf_issue_register_file_input;
-    register_file_issue_interface_register_file_output fp_rf_issue_register_file_output;
-    register_file_issue_interface_issue_input fp_rf_issue_issue_input;
-    register_file_issue_interface_issue_output fp_rf_issue_issue_output;
+    register_file_register_file_issue_interface_input fp_rf_issue_register_file_input;
+    register_file_register_file_issue_interface_output fp_rf_issue_register_file_output;
+    issue_register_file_issue_interface_input fp_rf_issue_issue_input;
+    issue_register_file_issue_interface_output fp_rf_issue_issue_output;
 
     logic [MAX_NUM_UNITS-1:0] unit_needed;
     logic [MAX_NUM_UNITS-1:0][REGFILE_READ_PORTS-1:0] unit_uses_rs;
@@ -166,10 +166,10 @@ module cva5
     logic [31:0] constant_alu;
 
     //unit_issue_interface unit_issue [MAX_NUM_UNITS-1:0]();
-    decode_unit_issue_interface_input unit_issue_decode_input;
-    decode_unit_issue_interface_output unit_issue_decode_output;
-    unit_unit_issue_interface_input unit_issue_unit_input;
-    unit_unit_issue_interface_output unit_issue_unit_output;
+    decode_unit_issue_interface_input unit_issue_decode_input[MAX_NUM_UNITS-1:0];
+    decode_unit_issue_interface_output unit_issue_decode_output[MAX_NUM_UNITS-1:0];
+    unit_unit_issue_interface_input unit_issue_unit_input[MAX_NUM_UNITS-1:0];
+    unit_unit_issue_interface_output unit_issue_unit_output[MAX_NUM_UNITS-1:0];
 
     exception_packet_t  ls_exception;
     logic ls_exception_is_store;
@@ -273,7 +273,9 @@ module cva5
     decode_renamer_interface_output fp_decode_rename_interface_decode_output;
     
     //Global Control
-    exception_interface exception [NUM_EXCEPTION_SOURCES]();
+    //exception_interface exception [NUM_EXCEPTION_SOURCES]();
+    unit_exception_output exception_output[NUM_EXCEPTION_SOURCES];
+    econtrol_exception_interface_input exception_input[NUM_EXCEPTION_SOURCES];
     gc_outputs_t gc;
     tlb_packet_t sfence;
     load_store_status_t load_store_status;
@@ -448,8 +450,8 @@ module cva5
             .mmu_input (immu_mmu_input),
             .mmu_output (immu_mmu_output),
             .abort_request (gc.fetch_flush | early_branch_flush),
-            .mem_input (immu_mem),
-            .mem_output 
+            .mem_input (immu_mem_input_master_ro),
+            .mem_output (immu_mem_output_master_ro)
         );
 
         end
@@ -463,7 +465,8 @@ module cva5
         .rst (rst),
         .gc (gc),
         .decode_advance (decode_advance),
-        .decode (decode_rename_interface),
+        .decode_input (decode_rename_interface_renamer_input),
+        .decode_output (decode_rename_interface_renamer_output),
         .issue (issue), //packet
         .instruction_issued_with_rd (instruction_issued_with_rd),
         .wb_retire (wb_retire)
@@ -483,8 +486,10 @@ module cva5
         .fp_unit_uses_rs (fp_unit_uses_rs),
         .unit_uses_rd (unit_uses_rd),
         .fp_unit_uses_rd (fp_unit_uses_rd),
-        .renamer (decode_rename_interface),
-        .fp_renamer (fp_decode_rename_interface),
+        .renamer_input (decode_rename_interface_decode_input),
+        .renamer_output (decode_rename_interface_decode_output),
+        .fp_renamer_input (fp_decode_rename_interface_decode_input),
+        .fp_renamer_output (fp_decode_rename_interface_decode_output),
         .decode_uses_rd (decode_uses_rd),
         .fp_decode_uses_rd (fp_decode_uses_rd),
         .decode_rd_addr (decode_rd_addr),
@@ -504,13 +509,16 @@ module cva5
         .fp_issue_phys_rs_addr (fp_issue_phys_rs_addr),
         .issue_rd_wb_group (issue_rd_wb_group),
         .fp_issue_rd_wb_group (fp_issue_rd_wb_group),
-        .rf (rf_issue),
-        .fp_rf (fp_rf_issue),
+        .rf_input (rf_issue_issue_input),
+        .rf_output (rf_issue_issue_output),
+        .fp_rf_input (fp_rf_issue_issue_input),
+        .fp_rf_output (fp_rf_issue_issue_output),
         .constant_alu (constant_alu),
-        .unit_issue (unit_issue),
+        .unit_issue_input (unit_issue_decode_input),
+        .unit_issue_output (unit_issue_decode_output),
         .gc (gc),
         .current_privilege (current_privilege),
-        .exception (exception[PRE_ISSUE_EXCEPTION])
+        .exception (exception_output[PRE_ISSUE_EXCEPTION])
     );
 
     ////////////////////////////////////////////////////
@@ -526,7 +534,8 @@ module cva5
         .decode_advance (decode_advance),
         .decode_uses_rd (decode_uses_rd),
         .decode_rd_addr (decode_rd_addr),
-        .rf_issue (rf_issue),
+        .rf_issue_input (rf_issue_register_file_input),
+        -rf_issue_output (rf_issue_register_file_output),
         .commit (wb_packet),
         .wb_phys_addr (wb_phys_addr)
     );
@@ -544,11 +553,12 @@ module cva5
         .uses_rs (unit_uses_rs[BR_ID]),
         .uses_rd (unit_uses_rd[BR_ID]),
         .rf (rf_issue.data),
-        .constant_alu (constant_alu),
-        .issue (unit_issue[BR_ID]),
+        .constant_alu (constant_alu), 
+        .issue_input (unit_issue_unit_input[BR_ID]),
+        .issue_output (unit_issue_unit_output[BR_ID]),
         .br_results (br_results),
         .branch_flush (branch_flush),
-        .exception (exception[BR_EXCEPTION])
+        .exception_output (exception[BR_EXCEPTION])
     );
 
 
