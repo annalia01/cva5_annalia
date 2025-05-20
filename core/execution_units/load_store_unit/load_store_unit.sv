@@ -456,9 +456,9 @@ module load_store_unit
 
         always_ff @(posedge clk) begin
             if (rst)
-                exception.valid <= 0;
+                exception_output.valid <= 0;
             else
-                exception.valid <= new_exception;
+                exception_output.valid <= new_exception;
         end
 
         logic is_load;
@@ -472,22 +472,22 @@ module load_store_unit
                 exception_is_fp <= CONFIG.INCLUDE_UNIT.FPU & issue_attr.is_fpu;
                 is_load_r <= is_load;
                 if (illegal_cbo) begin
-                    exception.code <= ILLEGAL_INST;
-                    exception.tval <= issue_stage.instruction;
+                    exception_output.code <= ILLEGAL_INST;
+                    exception_output.tval <= issue_stage.instruction;
                 end else begin
-                    exception.code <= is_load ? LOAD_ADDR_MISSALIGNED : STORE_AMO_ADDR_MISSALIGNED;
-                    exception.tval <= virtual_address;
+                    exception_output.code <= is_load ? LOAD_ADDR_MISSALIGNED : STORE_AMO_ADDR_MISSALIGNED;
+                    exception_output.tval <= virtual_address;
                 end
                 exception_id <= issue_input.id;
             end
-            else if (tlb.is_fault)
-                exception.code <= is_load_r ? LOAD_PAGE_FAULT : STORE_OR_AMO_PAGE_FAULT;
+            else if (tlb_input.is_fault)
+                exception_output.code <= is_load_r ? LOAD_PAGE_FAULT : STORE_OR_AMO_PAGE_FAULT;
             else if (nomatch_fault)
-                exception.code <= is_load_r ? LOAD_FAULT : STORE_AMO_FAULT;
+                exception_output.code <= is_load_r ? LOAD_FAULT : STORE_AMO_FAULT;
         end
-        assign exception.possible = (tlb_request_r & (~tlb.done | ~|sub_unit_address_match)) | exception.valid | delayed_exception; //Must suppress issue for issue-time exceptions too
-        assign exception.pc = issue_stage.pc_r;
-        assign exception.discard = tlb_lq & ~rd_zero_r;
+        assign exception_output.possible = (tlb_request_r & (~tlb_input.done | ~|sub_unit_address_match)) | exception_output.valid | delayed_exception; //Must suppress issue for issue-time exceptions too
+        assign exception_output.pc = issue_stage.pc_r;
+        assign exception_output.discard = tlb_lq & ~rd_zero_r;
 
         assign exception_is_store = ~tlb_lq;
     end endgenerate
@@ -508,15 +508,15 @@ module load_store_unit
     always_ff @(posedge clk) begin
         if (rst)
             tlb_request_r <= 0;
-        else if (tlb.new_request)
+        else if (tlb_input.new_request)
             tlb_request_r <= 1;
-        else if (tlb.done | tlb.is_fault)
+        else if (tlb_input.done | tlb_input.is_fault)
             tlb_request_r <= 0;
     end
 
-    assign tlb.rnw = issue_attr.is_load | (issue_attr.is_amo & issue_attr.amo_type == AMO_LR_FN5) | issue_attr.is_cbo;
-    assign tlb.virtual_address = virtual_address;
-    assign tlb.new_request = issue_input.new_request & ~issue_attr.is_fence & (~unaligned_addr | issue_attr.is_cbo) & ~illegal_cbo;
+    assign tlb_output.rnw = issue_attr.is_load | (issue_attr.is_amo & issue_attr.amo_type == AMO_LR_FN5) | issue_attr.is_cbo;
+    assign tlb_output.virtual_address = virtual_address;
+    assign tlb_output.new_request = issue_input.new_request & ~issue_attr.is_fence & (~unaligned_addr | issue_attr.is_cbo) & ~illegal_cbo;
 
     ////////////////////////////////////////////////////
     //Byte enable generation
@@ -576,9 +576,9 @@ module load_store_unit
     assign lsq.store_pop = sub_unit_store_issue;
 
     //Physical address passed separately
-    assign lsq.addr_push = tlb.done | tlb.is_fault | exception_lsq_push;
+    assign lsq.addr_push = tlb_input.done | tlb_input.is_fault | exception_lsq_push;
     assign lsq.addr_data_in = '{
-        addr : tlb.physical_address[31:12],
+        addr : tlb_input.physical_address[31:12],
         rnw : tlb_lq,
         discard : late_exception | exception_lsq_push,
         subunit : padded_subunit_id
@@ -609,7 +609,7 @@ module load_store_unit
 
     assign sub_unit_ready = unit_ready[subunit_id] & (~unit_switch_hold);
     assign load_response = |unit_data_valid;
-    assign load_complete = load_response & (~exception.valid | exception_is_store);
+    assign load_complete = load_response & (~exception_output.valid | exception_is_store);
 
     //TLB status and exceptions can be ignored because they will prevent instructions from issuing
     assign issue_output.ready = ~lsq.full & ~fence_hold;
@@ -748,7 +748,8 @@ module load_store_unit
 
             if (CONFIG.DCACHE.USE_EXTERNAL_INVALIDATIONS) begin : gen_full_dcache
                 dcache_inv #(.CONFIG(CONFIG)) data_cache (
-                    .mem(mem),
+                    .mem(mem_input),
+                    .mem(mem_output),
                     .write_outstanding(unit_write_outstanding[DCACHE_ID]),
                     .amo(shared_inputs.amo),
                     .amo_type(shared_inputs.amo_type),
@@ -842,12 +843,12 @@ module load_store_unit
     ////////////////////////////////////////////////////
     //Output bank
     assign wb.rd = final_load_data;
-    assign wb.done = (load_complete & (~CONFIG.INCLUDE_UNIT.FPU | wb_attr.fp_op == INT_DONE)) | (exception.valid & ~exception_is_fp & ~exception_is_store);
-    assign wb.id = exception.valid & ~exception_is_store ? exception_id : wb_attr.id;
+    assign wb.done = (load_complete & (~CONFIG.INCLUDE_UNIT.FPU | wb_attr.fp_op == INT_DONE)) | (exception_output.valid & ~exception_is_fp & ~exception_is_store);
+    assign wb.id = exception_output.valid & ~exception_is_store ? exception_id : wb_attr.id;
 
     assign fp_wb.rd = fp_result;
     assign fp_wb.done = (load_complete & (wb_attr.fp_op == SINGLE_DONE | wb_attr.fp_op == DOUBLE_DONE)) | (exception.valid & exception_is_fp & ~exception_is_store);
-    assign fp_wb.id = exception.valid & ~exception_is_store ? exception_id : wb_attr.id;
+    assign fp_wb.id = exception_output.valid & ~exception_is_store ? exception_id : wb_attr.id;
 
     ////////////////////////////////////////////////////
     //End of Implementation
