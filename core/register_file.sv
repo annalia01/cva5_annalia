@@ -48,7 +48,9 @@ module register_file
         input rs_addr_t decode_rd_addr, //Ignored if USE_ZERO
 
         //Issue interface
-        register_file_issue_interface.register_file rf_issue,
+        //register_file_issue_interface.register_file rf_issue,
+        register_file_register_file_issue_interface_input rf_issue_input,
+        register_file_register_file_issue_interface_output rf_issue_output,
 
         //Writeback
         input WB_PACKET_TYPE commit [NUM_WB_GROUPS],
@@ -78,16 +80,16 @@ module register_file
     always_comb begin
         for (int i = 0; i < READ_PORTS; i++) begin
             inuse_read_addr[i] = decode_phys_rs_addr[i];
-            inuse_read_addr[i+READ_PORTS] = rf_issue.phys_rs_addr[i];
+            inuse_read_addr[i+READ_PORTS] = rf_issue_input.phys_rs_addr[i];
             decode_inuse[i] = inuse[i];
-            rf_issue.inuse[i] = inuse[i+READ_PORTS];
+            rf_issue_output.inuse[i] = inuse[i+READ_PORTS];
         end
         
         toggle[0] = decode_advance & decode_uses_rd & (USE_ZERO | |decode_rd_addr) & ~gc.fetch_flush;
         toggle_addr[0] = decode_phys_rd_addr;
 
-        toggle[1] = rf_issue.single_cycle_or_flush;
-        toggle_addr[1] = rf_issue.phys_rd_addr;
+        toggle[1] = rf_issue_input.single_cycle_or_flush;
+        toggle_addr[1] = rf_issue_input.phys_rd_addr;
         for (int i = 1; i < NUM_WB_GROUPS+PORT_ZERO_ABSENT; i++) begin
             toggle[i+1] = commit[i-PORT_ZERO_ABSENT].valid & (USE_ZERO | |wb_phys_addr[i-PORT_ZERO_ABSENT]);
             toggle_addr[i+1] = wb_phys_addr[i-PORT_ZERO_ABSENT];
@@ -138,7 +140,7 @@ module register_file
     always_ff @ (posedge clk) begin
         for (int i = 0; i < NUM_WB_GROUPS; i++)
             for (int j = 0; j < READ_PORTS; j++)
-                if (decode_advance | rf_issue.inuse[j])
+                if (decode_advance | rf_issue_input.inuse[j])
                     commit_rs_data[i][j] <= commit[i].data;
    end
 
@@ -167,7 +169,7 @@ module register_file
     end
 
     always_comb for (int i = 0; i < READ_PORTS; i++)
-        rf_issue.data[i] = issue_data_mux[i][issue_sel[i]];
+        rf_issue_output.data[i] = issue_data_mux[i][issue_sel[i]];
 
     ////////////////////////////////////////////////////
     //End of Implementation
