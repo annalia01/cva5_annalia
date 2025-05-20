@@ -38,7 +38,9 @@ module register_free_list
     (
         input logic clk,
         input logic rst,
-        fifo_interface.structure fifo,
+        //fifo_interface.structure fifo,
+        structure_fifo_interface_input fifo_input,
+        structure_fifo_interface_output fifo_output,
         input logic rollback
     );
 
@@ -59,13 +61,13 @@ module register_free_list
             inflight_count <= 0;
         else
             inflight_count <= inflight_count 
-            + (LOG2_FIFO_DEPTH+1)'(fifo.pop) 
-            - (LOG2_FIFO_DEPTH+1)'(fifo.push) 
+            + (LOG2_FIFO_DEPTH+1)'(fifo_input.pop) 
+            - (LOG2_FIFO_DEPTH+1)'(fifo_input.push) 
             - (LOG2_FIFO_DEPTH+1)'(rollback);
     end
 
-    assign fifo.valid = inflight_count[LOG2_FIFO_DEPTH];
-    assign fifo.full = fifo.valid & ~|inflight_count[LOG2_FIFO_DEPTH-1:0];
+    assign fifo_output.valid = inflight_count[LOG2_FIFO_DEPTH];
+    assign fifo_output.full = fifo_input.valid & ~|inflight_count[LOG2_FIFO_DEPTH-1:0];
 
     always_ff @ (posedge clk) begin
         if (rst) begin
@@ -79,16 +81,16 @@ module register_free_list
     end
 
     always_ff @ (posedge clk) begin
-        if (fifo.potential_push)
-            lut_ram[write_index] <= fifo.data_in;
+        if (fifo_input.potential_push)
+            lut_ram[write_index] <= fifo_input.data_in;
     end
-    assign fifo.data_out = lut_ram[read_index];
+    assign fifo_output.data_out = lut_ram[read_index];
 
     ////////////////////////////////////////////////////
     //Assertions
     fifo_overflow_assertion:
-        assert property (@(posedge clk) disable iff (rst) fifo.push |-> (~fifo.full | fifo.pop)) else $error("overflow");
+    assert property (@(posedge clk) disable iff (rst) fifo_input.push |-> (~fifo_output.full | fifo_input.pop)) else $error("overflow");
     fifo_underflow_assertion:
-        assert property (@(posedge clk) disable iff (rst) fifo.pop |-> fifo.valid) else $error("underflow");
+        assert property (@(posedge clk) disable iff (rst) fifo_input.pop |-> fifo_output.valid) else $error("underflow");
 
 endmodule
