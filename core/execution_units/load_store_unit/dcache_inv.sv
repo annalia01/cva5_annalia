@@ -25,6 +25,12 @@ module dcache_inv
     import cva5_config::*;
     import riscv_types::*;
     import cva5_types::*;
+    import cache_functions_pkg::*;
+    
+
+    localparam int TAG_W        = SCONFIG.TAG_W;
+    localparam int LINE_W       = SCONFIG.LINE_ADDR_W;
+    localparam int SUB_LINE_W   = SCONFIG.SUB_LINE_ADDR_W;
 
     # (
         parameter cpu_config_t CONFIG = EXAMPLE_CONFIG
@@ -32,14 +38,26 @@ module dcache_inv
     (
         input logic clk,
         input logic rst,
-        mem_interface.rw_master mem,
+        //mem_interface.rw_master mem,
+        master_rw_mem_interface_input mem_input,
+        master_rw_mem_interface_output mem_output,
+
+        
         output logic write_outstanding,
         input logic amo,
         input amo_t amo_type,
-        amo_interface.subunit amo_unit,
+        //amo_interface.subunit amo_unit,
+        subunit_amo_interface_input amo_unit_input,
+        subunit_amo_interface_output amo_unit_output,
+        
         input logic cbo,
         input logic uncacheable,
-        memory_sub_unit_interface.responder ls,
+        
+        //memory_sub_unit_interface.responder ls,
+
+        responder_memory_sub_unit_interface_input ls_input,
+        responder_memory_sub_unit_interface_output ls_output,
+        
         input logic load_peek, //If the next request may be a load
         input logic[31:0] load_addr_peek //The address in that case
     );
@@ -47,7 +65,11 @@ module dcache_inv
     localparam derived_cache_config_t SCONFIG = get_derived_cache_params(CONFIG, CONFIG.DCACHE, CONFIG.DCACHE_ADDR);
     localparam DB_ADDR_LEN = SCONFIG.LINE_ADDR_W + SCONFIG.SUB_LINE_ADDR_W;
 
-    cache_functions_interface # (.TAG_W(SCONFIG.TAG_W), .LINE_W(SCONFIG.LINE_ADDR_W), .SUB_LINE_W(SCONFIG.SUB_LINE_ADDR_W)) addr_utils ();
+    //cache_functions_interface # (.TAG_W(SCONFIG.TAG_W), .LINE_W(SCONFIG.LINE_ADDR_W), .SUB_LINE_W(SCONFIG.SUB_LINE_ADDR_W)) addr_utils ();
+    `define addr_utils_getTag(addr) getTag#(.TAG_W(TAG_W), .LINE_W(LINE_W), .SUB_LINE_W(SUB_LINE_W))(addr)
+    `define addr_utils_getTagLineAddr(addr) getTagLineAddr#(.LINE_W(LINE_W), .SUB_LINE_W(SUB_LINE_W))(addr)
+    `define addr_utils_getHashedLineAddr(addr, way) getHashedLineAddr#(.LINE_W(LINE_W), .SUB_LINE_W(SUB_LINE_W))(addr, way)
+    `define addr_utils_getDataLineAddr(addr) getDataLineAddr#(.LINE_W(LINE_W), .SUB_LINE_W(SUB_LINE_W))(addr)
 
     typedef logic[SCONFIG.TAG_W-1:0] tag_t;
     typedef logic[SCONFIG.LINE_ADDR_W-1:0] line_t;
@@ -93,22 +115,22 @@ module dcache_inv
             stage1_type <= WRITE;
         end
         else begin
-            stage0_advance_r <= ls.new_request;
-            if (ls.new_request) begin
+            stage0_advance_r <= ls_input.new_request;
+            if (ls_input.new_request) begin
                 stage1_valid <= 1;
                 stage1_type <= stage0_type;
             end
             else if (stage1_done)
                 stage1_valid <= 0;
         end
-        if (ls.new_request)
+        if (ls_input.new_request)
             stage1 <= stage0;
     end
 
     always_comb begin
         if (cbo)
             stage0_type = CBO;
-        else if (ls.we)
+        else if (ls_input.we)
             stage0_type = WRITE;
         else if (amo & amo_type == AMO_LR_FN5)
             stage0_type = AMO_LR;
@@ -121,9 +143,9 @@ module dcache_inv
     end
 
     assign stage0 = '{
-        addr : ls.addr,
-        wdata : ls.data_in,
-        be : ls.be,
+        addr : ls_input.addr,
+        wdata : ls_input.data_in,
+        be : ls_input.be,
         amo_type : amo_type,
         uncacheable : uncacheable
     };
@@ -143,13 +165,13 @@ module dcache_inv
     //Technically snoop addresses do not need to lie within our addressable space, so their tag should be wider
     //But this is a niche scenario and there is no harm in aliasing requests into our address space (beyond performance)
 
-    assign {snoop_tag, snoop_line} = mem.inv_addr[2+SCONFIG.SUB_LINE_ADDR_W+:SCONFIG.TAG_W+SCONFIG.LINE_ADDR_W];
+    assign {snoop_tag, snoop_line} = mem_input.inv_addr[2+SCONFIG.SUB_LINE_ADDR_W+:SCONFIG.TAG_W+SCONFIG.LINE_ADDR_W];
 
     always_ff @(posedge clk) begin
         if (rst)
             snoop_valid <= 0;
         else
-            snoop_valid <= mem.inv;
+            snoop_valid <= mem_input.inv;
         snoop_line_r <= snoop_line;
         snoop_tag_r <= snoop_tag;
     end
@@ -164,7 +186,7 @@ module dcache_inv
     //Random replacement policy (cycler)
     logic[CONFIG.DCACHE.WAYS-1:0] replacement_way;
     cycler #(.C_WIDTH(CONFIG.DCACHE.WAYS)) replacement_policy (
-        .en(ls.new_request),
+        .en(ls_input.new_request),
         .one_hot(replacement_way),
     .*);
 
@@ -185,7 +207,7 @@ module dcache_inv
     logic stage1_tb_wval_r;
     logic[CONFIG.DCACHE.WAYS-1:0] hit_ohot_r;
 
-    assign a_en = snoop_write | stage1_tb_write_r | ls.new_request; // & ~inv_matches_stage1 )
+    assign a_en = snoop_write | stage1_tb_write_r | ls_input.new_request; // & ~inv_matches_stage1 )
     assign a_wbe = ({CONFIG.DCACHE.WAYS{snoop_write}} & snoop_hit) | ({CONFIG.DCACHE.WAYS{stage1_tb_write_r}} & (stage1_type == CBO | (stage1_type == AMO_RMW & hit_r) ? hit_ohot_r : replacement_way));
 
     always_comb begin
@@ -211,7 +233,7 @@ module dcache_inv
     line_t rst_line;
     assign resetting = ~rst_invalid;
 
-    assign b_en = mem.inv | resetting;
+    assign b_en = mem_input.inv | resetting;
     assign b_wbe = {CONFIG.DCACHE.WAYS{resetting}};
     assign b_wdata = '{default: '0};
     assign b_addr = resetting ? rst_line : snoop_line;
@@ -298,22 +320,22 @@ module dcache_inv
             RMW_READ : begin
                 rmw_mem_request = 1;
                 rmw_mem_rnw = 1;
-                rmw_stage1_tb_write = mem.ack & ~stage1.uncacheable;
+                rmw_stage1_tb_write = mem_input.ack & ~stage1.uncacheable;
                 rmw_db_wen = 0;
                 rmw_db_wdata = 'x;
                 rmw_ls_data_valid = 0;
                 rmw_stage1_done = 0;
-                next_state = mem.ack ? RMW_FILLING : RMW_READ;
+                next_state = mem_input.ack ? RMW_FILLING : RMW_READ;
             end
             RMW_WRITE : begin
                 rmw_mem_request = ~rmw_retry;
                 rmw_mem_rnw = 0;
                 rmw_stage1_tb_write = 0;
-                rmw_db_wen = ~stage1.uncacheable & mem.ack;
-                rmw_db_wdata = amo_unit.rd;
-                rmw_ls_data_valid = mem.ack;
-                rmw_stage1_done = mem.ack;
-                if (mem.ack)
+                rmw_db_wen = ~stage1.uncacheable & mem_input.ack;
+                rmw_db_wdata = amo_unit_input.rd;
+                rmw_ls_data_valid = mem_input.ack;
+                rmw_stage1_done = mem_input.ack;
+                if (mem_input.ack)
                     next_state = RMW_IDLE;
                 else if (rmw_retry)
                     next_state = RMW_READ;
@@ -324,8 +346,8 @@ module dcache_inv
                 rmw_mem_request = 0;
                 rmw_mem_rnw = 'x;
                 rmw_stage1_tb_write = 0;
-                rmw_db_wen = mem.rvalid & ~stage1.uncacheable;
-                rmw_db_wdata = mem.rdata;
+                rmw_db_wen = mem_input.rvalid & ~stage1.uncacheable;
+                rmw_db_wdata = mem_input.rdata;
                 rmw_ls_data_valid = 0;
                 rmw_stage1_done = 0;
                 if (return_done)
@@ -356,7 +378,7 @@ module dcache_inv
     //Tagbank write logic; always on ack_r because it is guaranteed that there won't be a conflicting snoop tb write
     logic ack_r;
     always_ff @(posedge clk) begin
-        ack_r <= mem.ack;
+        ack_r <= mem_input.ack;
         stage1_tb_write_r <= stage1_tb_write;
         stage1_tb_wval_r <= stage1_tb_wval;
     end
@@ -366,18 +388,18 @@ module dcache_inv
     always_ff @(posedge clk) begin
         if (rst | stage1_done)
             request_sent <= 0;
-        else if (mem.ack)
+        else if (mem_input.ack)
             request_sent <= 1;
     end
 
     //Atomics that collide with a snoop on stage0 must be treated as a miss
     always_ff @(posedge clk) begin
-        if (ls.new_request)
-            force_miss <= amo & mem.inv & mem.inv_addr[31:2+SCONFIG.SUB_LINE_ADDR_W] == stage0.addr[31:2+SCONFIG.SUB_LINE_ADDR_W];
+        if (ls_input.new_request)
+            force_miss <= amo & mem_input.inv & mem_input.inv_addr[31:2+SCONFIG.SUB_LINE_ADDR_W] == stage0.addr[31:2+SCONFIG.SUB_LINE_ADDR_W];
     end
 
     //RMW requests must be retried if invalidated after the read but before the write
-    assign inv_matches_stage1 = mem.inv & stage1.addr[31:2+SCONFIG.SUB_LINE_ADDR_W] == mem.inv_addr[31:2+SCONFIG.SUB_LINE_ADDR_W];
+    assign inv_matches_stage1 = mem_input.inv & stage1.addr[31:2+SCONFIG.SUB_LINE_ADDR_W] == mem_input.inv_addr[31:2+SCONFIG.SUB_LINE_ADDR_W];
     always_ff @(posedge clk) begin
         case (current_state)
             RMW_IDLE, RMW_FILLING, RMW_WRITE : rmw_retry <= stage1_valid & stage1_type == AMO_RMW & (rmw_retry | inv_matches_stage1);
@@ -388,13 +410,13 @@ module dcache_inv
     //Fill burst word counting
     logic correct_word;
     block_t word_counter;
-    assign return_done = mem.rvalid & (stage1.uncacheable | word_counter == SCONFIG.SUB_LINE_ADDR_W'(CONFIG.DCACHE.LINE_W-1));
-    assign correct_word = mem.rvalid & (stage1.uncacheable | word_counter == stage1.addr[2+:SCONFIG.SUB_LINE_ADDR_W]);
+    assign return_done = mem_input.rvalid & (stage1.uncacheable | word_counter == SCONFIG.SUB_LINE_ADDR_W'(CONFIG.DCACHE.LINE_W-1));
+    assign correct_word = mem_input.rvalid & (stage1.uncacheable | word_counter == stage1.addr[2+:SCONFIG.SUB_LINE_ADDR_W]);
     always_ff @(posedge clk) begin
         if (rst | stage1_done)
             word_counter <= '0;
         else
-            word_counter <= word_counter + block_t'(mem.rvalid);
+            word_counter <= word_counter + block_t'(mem_input.rvalid);
     end
 
 
@@ -409,114 +431,114 @@ module dcache_inv
     always_comb begin
         unique case (stage1_type)
             WRITE : begin
-                mem.request = stage1_valid;
-                mem.wdata = stage1.wdata;
-                mem.rnw = 0;
-                mem.rmw = 0;
+                mem_output.request = stage1_valid;
+                mem_output.wdata = stage1.wdata;
+                mem_output.rnw = 0;
+                mem_output.rmw = 0;
                 stage1_tb_write = 0;
                 stage1_tb_wval = 'x;
                 db_wen = stage0_advance_r & hit & ~stage1.uncacheable;
                 db_wdata = stage1.wdata;
                 db_way = hit_ohot;
-                ls.data_valid = 0;
-                ls.data_out = 'x;
-                stage1_done = mem.ack;
+                ls_output.data_valid = 0;
+                ls_output.data_out = 'x;
+                stage1_done = mem_input.ack;
             end
             CBO : begin
-                mem.request = stage1_valid & ~request_sent;
-                mem.wdata = 'x;
-                mem.rnw = 0;
-                mem.rmw = 0;
-                stage1_tb_write = ~stage1.uncacheable & mem.ack & (stage0_advance_r ? hit : hit_r);
+                mem_output.request = stage1_valid & ~request_sent;
+                mem_output.wdata = 'x;
+                mem_output.rnw = 0;
+                mem_output.rmw = 0;
+                stage1_tb_write = ~stage1.uncacheable & mem_input.ack & (stage0_advance_r ? hit : hit_r);
                 stage1_tb_wval = 0;
                 db_wen = 0;
                 db_wdata = 'x;
                 db_way = 'x;
-                ls.data_valid = 0;
-                ls.data_out = 'x;
+                ls_output.data_valid = 0;
+                ls_output.data_out = 'x;
                 stage1_done = request_sent & ~stage1_tb_write_r;
             end
             AMO_LR, READ : begin
-                mem.request = stage1_valid & ~stage0_advance_r & (stage1.uncacheable | ~hit_r) & ~request_sent;
-                mem.wdata = 'x;
-                mem.rnw = 1;
-                mem.rmw = 0;
+                mem_output.request = stage1_valid & ~stage0_advance_r & (stage1.uncacheable | ~hit_r) & ~request_sent;
+                mem_output.wdata = 'x;
+                mem_output.rnw = 1;
+                mem_output.rmw = 0;
                 stage1_tb_write = ~stage1.uncacheable & mem.ack;
                 stage1_tb_wval = 1;
-                db_wen = mem.rvalid & ~stage1.uncacheable;
-                db_wdata = mem.rdata;
+                db_wen = mem_input.rvalid & ~stage1.uncacheable;
+                db_wdata = mem_input.rdata;
                 db_way = replacement_way;
-                ls.data_valid = stage0_advance_r ? hit & ~stage1.uncacheable : correct_word;
-                ls.data_out = stage0_advance_r ? db_hit_entry : mem.rdata;
+                ls_output.data_valid = stage0_advance_r ? hit & ~stage1.uncacheable : correct_word;
+                ls_output.data_out = stage0_advance_r ? db_hit_entry : mem_input.rdata;
                 stage1_done = stage0_advance_r ? hit & ~stage1.uncacheable : return_done;
             end
             AMO_SC : begin
-                mem.request = stage1_valid & lr_valid;
-                mem.wdata = stage1.wdata;
-                mem.rnw = 0;
-                mem.rmw = 0;
+                mem_output.request = stage1_valid & lr_valid;
+                mem_output.wdata = stage1.wdata;
+                mem_output.rnw = 0;
+                mem_output.rmw = 0;
                 stage1_tb_write = 0;
                 stage1_tb_wval = 'x;
-                db_wen = ~stage1.uncacheable & mem.ack;
+                db_wen = ~stage1.uncacheable & mem_input.ack;
                 db_wdata = stage1.wdata;
                 db_way = stage0_advance_r ? hit_ohot : hit_ohot_r;
-                ls.data_valid = stage1_valid & (mem.ack | ~lr_valid);
-                ls.data_out = {31'b0, ~lr_valid};
-                stage1_done = stage1_valid & (mem.ack | ~lr_valid);
+                ls_output.data_valid = stage1_valid & (mem_input.ack | ~lr_valid);
+                ls_output.data_out = {31'b0, ~lr_valid};
+                stage1_done = stage1_valid & (mem_input.ack | ~lr_valid);
             end
             AMO_RMW : begin
-                mem.request = rmw_mem_request;
-                mem.wdata = amo_unit.rd;
-                mem.rnw = rmw_mem_rnw;
-                mem.rmw = 1;
+                mem_output.request = rmw_mem_request;
+                mem_output.wdata = amo_unit_input.rd;
+                mem_output.rnw = rmw_mem_rnw;
+                mem_output.rmw = 1;
                 stage1_tb_write = rmw_stage1_tb_write;
                 stage1_tb_wval = 1;
                 db_wen = rmw_db_wen;
                 db_wdata = rmw_db_wdata;
                 db_way = hit_r ? hit_ohot_r : replacement_way; //Will not write on first cycle so can use registered
-                ls.data_valid = rmw_ls_data_valid;
-                ls.data_out = amo_unit.rs1;
+                ls_output.data_valid = rmw_ls_data_valid;
+                ls_output.data_out = amo_unit_output.rs1;
                 stage1_done = rmw_stage1_done;
             end
         endcase
     end
 
-    assign mem.addr = stage1.addr[31:2];
-    assign mem.wbe = stage1.be;
-    assign mem.rlen = stage1.uncacheable ? '0 : 5'(CONFIG.DCACHE.LINE_W-1);
+    assign mem_output.addr = stage1.addr[31:2];
+    assign mem_output.wbe = stage1.be;
+    assign mem_output.rlen = stage1.uncacheable ? '0 : 5'(CONFIG.DCACHE.LINE_W-1);
     
     logic[DB_ADDR_LEN-1:0] db_addr;
-    assign ls.ready = ~resetting & ~snoop_write & (~stage1_valid | stage1_done) & ~(db_wen & load_peek & load_addr_peek[31:DB_ADDR_LEN+2] == stage1.addr[31:DB_ADDR_LEN+2] & load_addr_peek[2+:DB_ADDR_LEN] == db_addr);
-    assign write_outstanding = (stage1_valid & ~(stage1_type inside {READ, AMO_LR})) | mem.write_outstanding;
+    assign ls_output.ready = ~resetting & ~snoop_write & (~stage1_valid | stage1_done) & ~(db_wen & load_peek & load_addr_peek[31:DB_ADDR_LEN+2] == stage1.addr[31:DB_ADDR_LEN+2] & load_addr_peek[2+:DB_ADDR_LEN] == db_addr);
+    assign write_outstanding = (stage1_valid & ~(stage1_type inside {READ, AMO_LR})) | mem_input.write_outstanding;
 
     ////////////////////////////////////////////////////
     //Atomics
     logic local_reservation_valid;
     //local_reservation_valid is with respect to invalidations, the amo.reservation_valid is for other ports
-    assign lr_valid = amo_unit.reservation_valid & local_reservation_valid;
+    assign lr_valid = amo_unit_input.reservation_valid & local_reservation_valid;
 
     always_ff @(posedge clk) begin
         if (rst | inv_matches_stage1)
             local_reservation_valid <= 0;
-        else if (amo_unit.set_reservation)
+        else if (amo_unit_output.set_reservation)
             local_reservation_valid <= 1;
     end
 
-    assign amo_unit.reservation = stage1.addr;
+    assign amo_unit_output.reservation = stage1.addr;
     //On a miss, set on ack_r
     //On a hit, set as long as ~force_miss & ~inv_matches_stage1
-    assign amo_unit.set_reservation = stage1_valid & stage1_type == AMO_LR & (stage0_advance_r & hit & ~stage1.uncacheable & ~force_miss & ~inv_matches_stage1 | ack_r);
-    assign amo_unit.clear_reservation = stage1_done & stage1_type != AMO_LR;
+    assign amo_unit_output.set_reservation = stage1_valid & stage1_type == AMO_LR & (stage0_advance_r & hit & ~stage1.uncacheable & ~force_miss & ~inv_matches_stage1 | ack_r);
+    assign amo_unit_output.clear_reservation = stage1_done & stage1_type != AMO_LR;
 
     //RMW
-    assign amo_unit.rs2 = stage1.wdata;
-    assign amo_unit.rmw_valid = stage1_valid & stage1_type == AMO_RMW;
-    assign amo_unit.op = stage1.amo_type;
+    assign amo_unit_output.rs2 = stage1.wdata;
+    assign amo_unit_output.rmw_valid = stage1_valid & stage1_type == AMO_RMW;
+    assign amo_unit_output.op = stage1.amo_type;
     always_ff @(posedge clk) begin
         if (stage0_advance_r)
-            amo_unit.rs1 <= db_hit_entry;
+            amo_unit_output.rs1 <= db_hit_entry;
         else if (correct_word)
-            amo_unit.rs1 <= mem.rdata;
+            amo_unit_output.rs1 <= mem_input.rdata;
     end
 
     ////////////////////////////////////////////////////
@@ -532,7 +554,7 @@ module dcache_inv
     end
 
     assign db_addr[SCONFIG.SUB_LINE_ADDR_W+:SCONFIG.LINE_ADDR_W] = stage1.addr[2+SCONFIG.SUB_LINE_ADDR_W+:SCONFIG.LINE_ADDR_W];
-    assign db_addr[SCONFIG.SUB_LINE_ADDR_W-1:0] = mem.rvalid ? word_counter : stage1.addr[2+:SCONFIG.SUB_LINE_ADDR_W];
+    assign db_addr[SCONFIG.SUB_LINE_ADDR_W-1:0] = mem_input.rvalid ? word_counter : stage1.addr[2+:SCONFIG.SUB_LINE_ADDR_W];
 
     sdp_ram #(
         .ADDR_WIDTH(DB_ADDR_LEN),
@@ -544,7 +566,7 @@ module dcache_inv
         .a_wbe(db_wbe_full),
         .a_wdata({CONFIG.DCACHE.WAYS{db_wdata}}),
         .a_addr(db_addr),
-        .b_en(ls.new_request),
+        .b_en(ls_input.new_request),
         .b_addr(addr_utils.getDataLineAddr(stage0.addr)),
         .b_rdata(db_entries),
     .*);
@@ -558,15 +580,15 @@ module dcache_inv
     ////////////////////////////////////////////////////
     //Assertions
     dcache_request_when_not_ready_assertion:
-        assert property (@(posedge clk) disable iff (rst) ls.new_request |-> ls.ready)
+    assert property (@(posedge clk) disable iff (rst) ls_input.new_request |-> ls_output.ready)
         else $error("dcache received request when not ready");
 
     dcache_spurious_l1_ack_assertion:
-        assert property (@(posedge clk) disable iff (rst) mem.ack |-> mem.request)
+        assert property (@(posedge clk) disable iff (rst) mem_input.ack |-> mem_input.request)
         else $error("dcache received ack without a request");
 
     // dcache_ohot_assertion:
-    //     assert property (@(posedge clk) disable iff (rst) ls.new_request |=> $onehot0(hit_ohot))
+            //     assert property (@(posedge clk) disable iff (rst) ls_input.new_request |=> $onehot0(hit_ohot))
     //     else $error("dcache hit multiple ways");
 
 endmodule
