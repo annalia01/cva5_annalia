@@ -28,6 +28,7 @@ module load_store_unit
     import fpu_types::*;
     import csr_types::*;
     import opcodes::*;
+    import addr_utils_pkg::*;
 
     # (
         parameter cpu_config_t CONFIG = EXAMPLE_CONFIG
@@ -58,19 +59,39 @@ module load_store_unit
         input logic [31:0] rf [REGFILE_READ_PORTS],
         input logic[FLEN-1:0] fp_rf[3],
 
-        unit_issue_interface.unit issue,
+        //unit_issue_interface.unit issue,
+        unit_unit_issue_interface_input issue_input,
+        unit_unit_issue_interface_output issue_output,
 
         input logic dcache_on,
         input logic clear_reservation,
-        tlb_interface.requester tlb,
+        
+        //tlb_interface.requester tlb,
+        requester_tlb_interface_input tlb_input,
+        requester_tlb_interface_output tlb_output,
 
-        mem_interface.rw_master mem,
+        //mem_interface.rw_master mem,
 
-        axi_interface.master m_axi,
-        avalon_interface.master m_avalon,
-        wishbone_interface.master dwishbone,
+        master_rw_mem_interface_input mem_input,
+        master_rw_mem_interface_output mem_output,
 
-        local_memory_interface.master data_bram,
+        //axi_interface.master m_axi,
+
+        master_axi_interface_input m_axi_input,
+        master_axi_interface_output m_axi_output,
+        
+        //avalon_interface.master m_avalon,
+
+        master_avalon_interface_input m_avalon_input,
+        master_avalon_interface_output m_avalon_output,
+        
+        //wishbone_interface.master dwishbone,
+        master_wishbone_interface_input dwishbone_input,
+        master_wishbone_interface_output dwishbone_output,
+
+        //local_memory_interface.master data_bram,
+        master_local_memory_interface_input data_bram_input,
+        master_local_memory_interface_output data_bram_output,
 
         //CSR
         input logic [1:0] current_privilege,
@@ -85,10 +106,18 @@ module load_store_unit
         input id_t retire_id,
         input retire_packet_t store_retire,
 
-        exception_interface.unit exception,
+        //exception_interface.unit exception,
+        unit_exception_output exception_output,
+        
         output load_store_status_t load_store_status,
-        unit_writeback_interface.unit wb,
-        unit_writeback_interface.unit fp_wb
+        
+        //unit_writeback_interface.unit wb,
+        unit_unit_writeback_interface_input wb_input,
+        unit_unit_writeback_interface_output wb_output,
+        
+        //unit_writeback_interface.unit fp_wb
+        unit_unit_writeback_interface_input fp_wb_input,
+        unit_unit_writeback_interface_output fp_wb_output
     );
 
     localparam NUM_SUB_UNITS = int'(CONFIG.INCLUDE_DLOCAL_MEM) + int'(CONFIG.INCLUDE_PERIPHERAL_BUS) + int'(CONFIG.INCLUDE_DCACHE);
@@ -102,13 +131,44 @@ module load_store_unit
     localparam ATTRIBUTES_DEPTH = 1;
 
     //Subunit signals
-    amo_interface amo_if[NUM_SUB_UNITS]();
-    addr_utils_interface #(CONFIG.DLOCAL_MEM_ADDR.L, CONFIG.DLOCAL_MEM_ADDR.H) dlocal_mem_addr_utils ();
-    addr_utils_interface #(CONFIG.PERIPHERAL_BUS_ADDR.L, CONFIG.PERIPHERAL_BUS_ADDR.H) dpbus_addr_utils ();
-    addr_utils_interface #(CONFIG.DCACHE_ADDR.L, CONFIG.DCACHE_ADDR.H) dcache_addr_utils ();
-    memory_sub_unit_interface sub_unit[NUM_SUB_UNITS-1:0]();
+    //amo_interface amo_if[NUM_SUB_UNITS]();
+    subunit_amo_interface_input amo_if_subunit_input;
+    subunit_amo_interface_output amo_if_subunit_output;
+    amo_unit_amo_interface_input amo_if_amo_unit_input;
+    amo_unit_amo_interface_output amo_if_amo_unit_output;
 
-    addr_utils_interface #(CONFIG.DCACHE.NON_CACHEABLE.L, CONFIG.DCACHE.NON_CACHEABLE.H) uncacheable_utils ();
+
+    addr_range_t dlocal_mem_addr_utils = '{
+        base_addr: CONFIG.DLOCAL_MEM_ADDR.L,
+        upper_bound: CONFIG.DLOCAL_MEM_ADDR.H
+    };
+    
+    addr_range_t dcache_addr_utils = '{
+        base_addr: CONFIG.DCACHE_ADDR.L,
+        upper_bound: CONFIG.DCACHE_ADDR.H
+    };
+    
+    addr_range_t dpbus_addr_utils = '{
+        base_addr: CONFIG.PERIPHERAL_BUS_ADDR.L,
+        upper_bound: CONFIG.PERIPHERAL_BUS_ADDR.H
+    };
+
+    
+    //addr_utils_interface #(CONFIG.DLOCAL_MEM_ADDR.L, CONFIG.DLOCAL_MEM_ADDR.H) dlocal_mem_addr_utils ();
+    //addr_utils_interface #(CONFIG.PERIPHERAL_BUS_ADDR.L, CONFIG.PERIPHERAL_BUS_ADDR.H) dpbus_addr_utils ();
+    //addr_utils_interface #(CONFIG.DCACHE_ADDR.L, CONFIG.DCACHE_ADDR.H) dcache_addr_utils ();
+    
+    //memory_sub_unit_interface sub_unit[NUM_SUB_UNITS-1:0]();
+    controller_memory_sub_unit_interface_input sub_unit_controller_input[NUM_SUB_UNITS-1:0];
+    controller_memory_sub_unit_interface_output sub_unit_controller_output[NUM_SUB_UNITS-1:0];
+    responder_memory_sub_unit_interface_input sub_unit_responder_input[NUM_SUB_UNITS-1:0];
+    responder_memory_sub_unit_interface_output sub_unit_responder_output[NUM_SUB_UNITS-1:0];
+
+    //addr_utils_interface #(CONFIG.DCACHE.NON_CACHEABLE.L, CONFIG.DCACHE.NON_CACHEABLE.H) uncacheable_utils ();
+    addr_range_t dpbus_addr_utils = '{
+        base_addr: CONFIG.DCACHE.NON_CACHEABLE.L,
+        upper_bound: CONFIG.DCACHE.NON_CACHEABLE.H
+    };
 
     logic [NUM_SUB_UNITS-1:0] sub_unit_address_match;
 
@@ -172,9 +232,21 @@ module load_store_unit
 
     logic [3:0] be;
     //FIFOs
-    fifo_interface #(.DATA_TYPE(load_attributes_t)) load_attributes();
+    //fifo_interface #(.DATA_TYPE(load_attributes_t)) load_attributes();
 
-    load_store_queue_interface lsq();
+    enqueue_fifo_interface_input load_attributes_enqueue_input;
+    enqueue_fifo_interface_output load_attributes_enqueue_output;
+    dequeue_fifo_interface_input load_attributes_dequeue_input;
+    dequeue_fifo_interface_output load_attributes_dequeue_output;
+    structure_fifo_interface_input load_attributes_structure_input;
+    structure_fifo_interface_output load_attributes_structure_output;
+    
+
+    //load_store_queue_interface lsq();
+    ls_load_store_queue_interface_output lsq_ls_output;
+    ls_load_store_queue_interface_input lsq_ls_input;
+    queue_load_store_queue_interface_output lsq_queue_output;
+    queue_load_store_queue_interface_input lsq_queue_input;
     ////////////////////////////////////////////////////
     //Implementation
 
@@ -362,7 +434,7 @@ module load_store_unit
         logic delay_exception;
         logic delayed_exception;
         assign delay_exception = (
-            (issue.new_request & unaligned_addr & (issue_attr.is_load | issue_attr.is_amo) & issue.id != retire_id & ~issue_attr.rd_zero) |
+            (issue_input.new_request & unaligned_addr & (issue_attr.is_load | issue_attr.is_amo) & issue_input.id != retire_id & ~issue_attr.rd_zero) |
             (late_exception & tlb_lq & exception_id != retire_id & ~rd_zero_r)
         );
         always_ff @(posedge clk) begin
@@ -375,8 +447,8 @@ module load_store_unit
         end
 
         assign new_exception = (
-            (issue.new_request & ((unaligned_addr & issue_attr.is_store) | illegal_cbo)) |
-            (issue.new_request & unaligned_addr & (issue_attr.is_load | issue_attr.is_amo) & (issue.id == retire_id | issue_attr.rd_zero)) |
+            (issue_input.new_request & ((unaligned_addr & issue_attr.is_store) | illegal_cbo)) |
+            (issue_input.new_request & unaligned_addr & (issue_attr.is_load | issue_attr.is_amo) & (issue_input.id == retire_id | issue_attr.rd_zero)) |
             (late_exception & ~tlb_lq) |
             (late_exception & tlb_lq & (exception_id == retire_id | rd_zero_r)) |
             (delayed_exception & exception_id == retire_id)
@@ -395,7 +467,7 @@ module load_store_unit
 
         always_ff @(posedge clk) begin
             exception_lsq_push <= issue.new_request & ((unaligned_addr & ~issue_attr.is_fence & ~issue_attr.is_cbo) | illegal_cbo);
-            if (issue.new_request) begin
+            if (issue_input.new_request) begin
                 rd_zero_r <= issue_attr.rd_zero;
                 exception_is_fp <= CONFIG.INCLUDE_UNIT.FPU & issue_attr.is_fpu;
                 is_load_r <= is_load;
@@ -406,7 +478,7 @@ module load_store_unit
                     exception.code <= is_load ? LOAD_ADDR_MISSALIGNED : STORE_AMO_ADDR_MISSALIGNED;
                     exception.tval <= virtual_address;
                 end
-                exception_id <= issue.id;
+                exception_id <= issue_input.id;
             end
             else if (tlb.is_fault)
                 exception.code <= is_load_r ? LOAD_PAGE_FAULT : STORE_OR_AMO_PAGE_FAULT;
@@ -444,7 +516,7 @@ module load_store_unit
 
     assign tlb.rnw = issue_attr.is_load | (issue_attr.is_amo & issue_attr.amo_type == AMO_LR_FN5) | issue_attr.is_cbo;
     assign tlb.virtual_address = virtual_address;
-    assign tlb.new_request = issue.new_request & ~issue_attr.is_fence & (~unaligned_addr | issue_attr.is_cbo) & ~illegal_cbo;
+    assign tlb.new_request = issue_input.new_request & ~issue_attr.is_fence & (~unaligned_addr | issue_attr.is_cbo) & ~illegal_cbo;
 
     ////////////////////////////////////////////////////
     //Byte enable generation
@@ -478,15 +550,15 @@ module load_store_unit
         cache_op : issue_attr.is_cbo,
         amo : issue_attr.is_amo,
         amo_type : issue_attr.amo_type,
-        id : issue.id,
+        id : issue_input.id,
         id_needed : rd_attributes.id,
         fp : issue_attr.is_fpu,
         double : issue_attr.is_double,
         fp_data : fp_rf[RS2]
     };
 
-    assign lsq.potential_push = issue.possible_issue;
-    assign lsq.push = issue.new_request & ~issue_attr.is_fence;
+    assign lsq.potential_push = issue_input.possible_issue;
+    assign lsq.push = issue_input.new_request & ~issue_attr.is_fence;
 
     load_store_queue  # (.CONFIG(CONFIG)) lsq_block (
         .clk (clk),
@@ -513,7 +585,7 @@ module load_store_unit
     };
 
     always_ff @(posedge clk) begin
-        if (issue.new_request)
+        if (issue_input.new_request)
             tlb_lq <= ~issue_attr.is_store & ~issue_attr.is_cbo;
     end
 
@@ -540,7 +612,7 @@ module load_store_unit
     assign load_complete = load_response & (~exception.valid | exception_is_store);
 
     //TLB status and exceptions can be ignored because they will prevent instructions from issuing
-    assign issue.ready = ~lsq.full & ~fence_hold;
+    assign issue_output.ready = ~lsq.full & ~fence_hold;
 
     assign sub_unit_load_issue = sel_load & lsq.load_valid & sub_unit_ready;
     assign sub_unit_store_issue = (lsq.store_valid & ~sel_load) & sub_unit_ready;
@@ -552,7 +624,7 @@ module load_store_unit
         if (rst)
             fence_hold <= 0;
         else
-            fence_hold <= (fence_hold & ~load_store_status.idle) | (issue.new_request & issue_attr.is_fence & (issue_attr.nontrivial_fence | fiom));
+            fence_hold <= (fence_hold & ~load_store_status.idle) | (issue_input.new_request & issue_attr.is_fence & (issue_attr.nontrivial_fence | fiom));
     end
 
     ////////////////////////////////////////////////////
