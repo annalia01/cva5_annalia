@@ -328,8 +328,8 @@ module cva5
             .dmmu_output (dmmu_mem_output_slave_ro),
             .immu_input (immu_mem_input_slave_ro),
             .immu_output (immu_mem_output_slave_ro),
-            .mem_input (mem_input),
-            .mem_output (mem_output)
+            .mem_input (immu_mem_input_master_ro),
+            .mem_output (immu_mem_output_master_ro)
         );
     end
     endgenerate
@@ -423,7 +423,8 @@ module cva5
         .rst (rst),
         .gc (gc),
         .early_branch_flush_ras_adjust (early_branch_flush_ras_adjust),
-        .ras (ras)
+        .ras_input (ras_self_input),
+        .ras_output (ras_self_output)
     );
 
     itlb #(.WAYS(CONFIG.ITLB.WAYS), .DEPTH(CONFIG.ITLB.DEPTH))
@@ -434,17 +435,21 @@ module cva5
         .sfence (sfence),
         .abort_request (gc.fetch_flush | early_branch_flush),
         .asid (asid),
-        .tlb (itlb),
-        .mmu (immu)
+        .tlb_input (itlb_tlb_input),
+        .tlb_output (itlb_tlb_output),
+        .mmu_input (immu_tlb_input),
+        .mmu_output (immu_tlb_output)
     );
 
     generate if (CONFIG.MODES == MSU) begin : gen_immu
         mmu i_mmu (
             .clk (clk),
             .rst (rst),
-            .mmu (immu),
+            .mmu_input (immu_mmu_input),
+            .mmu_output (immu_mmu_output),
             .abort_request (gc.fetch_flush | early_branch_flush),
-            .mem (immu_mem)
+            .mem_input (immu_mem),
+            .mem_output 
         );
 
         end
