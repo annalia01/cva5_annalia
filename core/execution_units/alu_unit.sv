@@ -42,8 +42,13 @@ module alu_unit
         input rs_addr_t issue_rs_addr [REGFILE_READ_PORTS],
         input logic [31:0] rf [REGFILE_READ_PORTS],
 
-        unit_issue_interface.unit issue,
-        unit_writeback_interface.unit wb
+        //unit_issue_interface.unit issue,
+        unit_unit_issue_interface_input issue_input,
+        unit_unit_issue_interface_output issue_output,
+        
+        //unit_writeback_interface.unit wb
+        unit_unit_writeback_interface_input wb_input,
+        unit_unit_writeback_interface_output wb_output
     );
     typedef enum logic [1:0] {
         LOGIC_XOR = 2'b00,
@@ -173,10 +178,10 @@ module alu_unit
 
     ////////////////////////////////////////////////////
     //Output
-    assign issue.ready = 1;
-    assign wb.rd = result;
-    assign wb.done = issue.possible_issue;
-    assign wb.id = issue.id;
+    assign issue_output.ready = 1;
+    assign wb_output.rd = result;
+    assign wb_output.done = issue_input.possible_issue;
+    assign wb_output.id = issue_input.id;
 
     ////////////////////////////////////////////////////
     //Assertions
