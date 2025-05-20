@@ -45,11 +45,15 @@ module branch_unit
         input logic [31:0] constant_alu,
         input logic [31:0] rf [REGFILE_READ_PORTS],
 
-        unit_issue_interface.unit issue,
+        //unit_issue_interface.unit issue,
+        unit_unit_issue_interface_input issue_input,
+        unit_unit_issue_interface_output issue_output,
+        
         output branch_results_t br_results,
         output logic branch_flush,
 
-        exception_interface.unit exception
+        //exception_interface.unit exception
+        unit_exception_output exception_output
     );
     common_instruction_t instruction;//rs1_addr, rs2_addr, fn3, fn7, rd_addr, upper/lower opcode
 
@@ -154,13 +158,13 @@ module branch_unit
     //Only stall condition is if the following instruction is not valid for pc comparisons.
     //If the next instruction isn't valid, no instruction can be issued anyways, so it
     //is safe to hardcode this to one.
-    assign issue.ready = 1;
+    assign issue_output.ready = 1;
 
     //Branch new request is held if the following instruction hasn't arrived at decode/issue yet
     set_clr_reg_with_rst #(.SET_OVER_CLR(1), .WIDTH(1), .RST_VALUE(0)) branch_issued_m (
       .clk, .rst,
-      .set(issue.new_request),
-      .clr(issue_stage.stage_valid | exception.valid),
+        .set(issue_input.new_request),
+        .clr(issue_stage.stage_valid | exception_output.valid),
       .result(branch_issued_r)
     );
 
@@ -189,10 +193,10 @@ module branch_unit
     assign new_pc = branch_taken ? jump_pc : constant_alu;
 
     always_ff @(posedge clk) begin
-        if (issue.new_request) begin
+        if (issue_input.new_request) begin
             branch_taken_ex <= branch_taken;
             new_pc_ex <= {new_pc[31:1], new_pc[0]  & ~jalr};
-            id_ex <= issue.id;
+            id_ex <= issue_input.id;
             jal_or_jalr_ex <= jal_or_jalr;
         end
     end
@@ -202,19 +206,19 @@ module branch_unit
     generate if (CONFIG.MODES != BARE) begin : gen_branch_exception
         logic new_exception;
 
-        assign new_exception = new_pc[1] & branch_taken & issue.new_request;
+        assign new_exception = new_pc[1] & branch_taken & issue_input.new_request;
         always_ff @(posedge clk) begin
             if (rst)
-                exception.valid <= 0;
+                exception_output.valid <= 0;
             else
-                exception.valid <= new_exception;
+                exception_output.valid <= new_exception;
         end
 
-        assign exception.possible = 0; //Not needed because branch_flush suppresses issue
-        assign exception.code = INST_ADDR_MISSALIGNED;
-        assign exception.tval = new_pc_ex;
-        assign exception.pc = issue_stage.pc_r;
-        assign exception.discard = 0;
+        assign exception_output.possible = 0; //Not needed because branch_flush suppresses issue
+        assign exception_output.code = INST_ADDR_MISSALIGNED;
+        assign exception_output.tval = new_pc_ex;
+        assign exception_output.pc = issue_stage.pc_r;
+        assign exception_output.discard = 0;
     end
     endgenerate
 
@@ -223,7 +227,7 @@ module branch_unit
     logic is_return_ex;
     logic is_call_ex;
     always_ff @(posedge clk) begin
-        if (issue.possible_issue) begin
+        if (issue_input.possible_issue) begin
             is_return_ex <= is_return;
             is_call_ex <= is_call;
         end
