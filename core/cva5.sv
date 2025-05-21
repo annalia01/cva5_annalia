@@ -243,16 +243,16 @@ module cva5
     logic [LOG2_RETIRE_PORTS : 0] retire_count;
         //Writeback
     //unit_writeback_interface #(.DATA_WIDTH(32)) unit_wb [MAX_NUM_UNITS]();
-    unit_unit_writeback_interface_input unit_wb_unit_input;
-    unit_unit_writeback_interface_output unit_wb_unit_output;
-    wb_unit_writeback_interface_input unit_wb_wb_input;
-    wb_unit_writeback_interface_output unit_wb_wb_output;
+    unit_unit_writeback_interface_input unit_wb_unit_input[MAX_NUM_UNITS];
+    unit_unit_writeback_interface_output unit_wb_unit_output[MAX_NUM_UNITS];
+    wb_unit_writeback_interface_input unit_wb_wb_input[MAX_NUM_UNITS];
+    wb_unit_writeback_interface_output unit_wb_wb_output[MAX_NUM_UNITS];
     
     //unit_writeback_interface #(.DATA_WIDTH(FLEN)) fp_unit_wb [2]();
-    unit_unit_writeback_interface_input fp_unit_wb_unit_input;
-    unit_unit_writeback_interface_output fp_unit_wb_unit_output;
-    wb_unit_writeback_interface_input fp_unit_wb_wb_input;
-    wb_unit_writeback_interface_output fp_unit_wb_wb_output;
+    unit_unit_writeback_interface_input fp_unit_wb_unit_input[2];
+    unit_unit_writeback_interface_output fp_unit_wb_unit_output[2];
+    wb_unit_writeback_interface_input fp_unit_wb_wb_input[2];
+    wb_unit_writeback_interface_output fp_unit_wb_wb_output[2];
     
     wb_packet_t wb_packet [CONFIG.NUM_WB_GROUPS];
     fp_wb_packet_t fp_wb_packet [2];
@@ -597,19 +597,26 @@ module cva5
         .issue_rs_addr (issue_rs_addr),
         .issue_rd_wb_group (issue_rd_wb_group),
         .fp_issue_rd_wb_group (fp_issue_rd_wb_group),
-        .rs2_inuse (rf_issue.inuse[RS2]),
-        .fp_rs2_inuse (fp_rf_issue.inuse[RS2]),
-        .rf (rf_issue.data),
-        .fp_rf (fp_rf_issue.data),
-        .issue (unit_issue[LS_ID]),
+        .rs2_inuse (rf_issue_issue_input.inuse[RS2]),
+        .fp_rs2_inuse (fp_ rf_issue_issue_input.inuse[RS2]),
+        .rf (rf_issue_issue_input.data),
+        .fp_rf (fp_rf_issue_issue_input.data),
+        .issue_input (unit_issue_unit_input[LS_ID]),
+        .issue_output (unit_issue_unit_output[LS_ID]),
         .dcache_on (1'b1),
         .clear_reservation (1'b0),
-        .tlb (dtlb),
-        .mem (dcache_mem),
-        .m_axi (m_axi),
-        .m_avalon (m_avalon),
-        .dwishbone (dwishbone),
-        .data_bram (data_bram),
+        .tlb_input (dtlb_requester_input),
+        -tlb_output (dtlb_requester_output),
+        .mem_input (dcache_mem_input_master_rw),
+        .mem_output (dcache_mem_output_master_rw),
+        .m_axi_input (m_axi_input),
+        .m_axi_output (m_axi_output),
+        .m_avalon_input (m_avalon_input),
+        .m_avalon_output (m_avalon_output),
+        .dwishbone_input (dwishbone_input),
+        .dwishbone_output (dwishbone_output),
+        .data_bram_input (data_bram_input),
+        .data_bram_output (data_bram_ouput),
         .current_privilege (current_privilege),
         .menvcfg (menvcfg),
         .senvcfg (senvcfg),
@@ -617,10 +624,12 @@ module cva5
         .fp_wb_packet (fp_wb_packet),
         .retire_id (retire_ids[0]),
         .store_retire (store_retire),
-        .exception (exception[LS_EXCEPTION]),
+        .exception_output (exception_output[LS_EXCEPTION]),
         .load_store_status(load_store_status),
-        .wb (unit_wb[LS_ID]),
-        .fp_wb (fp_unit_wb[0])
+        .wb_input (unit_wb_unit_input[LS_ID]),
+        .wb_output (unit_wb_unit_output[LS_ID]),
+        .fp_wb_input (fp_unit_wb_unit_input[LS_ID]),
+        .fp_wb_output (fp_unit_wb_unit_output[LS_ID])
     );
 
     dtlb #(.WAYS(CONFIG.DTLB.WAYS), .DEPTH(CONFIG.DTLB.DEPTH))
@@ -630,8 +639,10 @@ module cva5
         .translation_on (data_translation_on),
         .sfence (sfence),
         .asid (asid),
-        .tlb (dtlb),
-        .mmu (dmmu)
+        .tlb_input (dtlb_tlb_input),
+        .tlb_output (dtlb_tlb_output),
+        .mmu_input (dmmu_tlb_input),
+        .mmu_output (dmmu_tlb_output)
     );
 
     generate if (CONFIG.MODES == MSU) begin : gen_dmmu
