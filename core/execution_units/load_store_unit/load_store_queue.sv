@@ -35,7 +35,9 @@ module load_store_queue //ID-based input buffer for Load/Store Unit
         input logic rst,
         input gc_outputs_t gc,
 
-        load_store_queue_interface.queue lsq,
+        //load_store_queue_interface.queue lsq,
+        queue_load_store_queue_interface_input lsq_input,
+        queue_load_store_queue_interface_output lsq_output,
         input logic [$clog2(CONFIG.NUM_WB_GROUPS)-1:0] store_forward_wb_group,
         input logic [1:0] fp_store_forward_wb_group,
         //Writeback snooping
@@ -84,10 +86,36 @@ module load_store_queue //ID-based input buffer for Load/Store Unit
     logic store_addr_bit_3;
     logic [31:0] store_data;
 
-    fifo_interface #(.DATA_TYPE(lq_entry_t)) lq();
+    //fifo_interface #(.DATA_TYPE(lq_entry_t)) lq();
+    enqueue_fifo_interface_input lq_enqueue_input;
+    enqueue_fifo_interface_output lq_enqueue_output;
+    dequeue_fifo_interface_input lq_dequeue_input;
+    dequeue_fifo_interface_output lq_dequeue_output;
+    structure_fifo_interface_input lq_structure_input;
+    structure_fifo_interface_output lq_structure_output;
+    
     fifo_interface #(.DATA_TYPE(addr_entry_t)) lq_addr();
-    store_queue_interface sq();
-    fifo_interface #(.DATA_TYPE(addr_entry_t)) sq_addr();
+    enqueue_fifo_interface_input lq_addr_enqueue_input;
+    enqueue_fifo_interface_output lq_addr_enqueue_output;
+    dequeue_fifo_interface_input lq_addr_dequeue_input;
+    dequeue_fifo_interface_output lq_addr_dequeue_output;
+    structure_fifo_interface_input lq_addr_structure_input;
+    structure_fifo_interface_output lq_addr_structure_output;
+    
+    //store_queue_interface sq();
+    ls_store_queue_interface_input sq_ls_input;
+    ls_store_queue_interface_output sq_ls_output;
+    queue_store_queue_interface_input sq_queue_input;
+    queue_store_queue_interface_output sq_queue_output;
+    
+    //fifo_interface #(.DATA_TYPE(addr_entry_t)) sq_addr();
+    enqueue_fifo_interface_input sq_addr_enqueue_input;
+    enqueue_fifo_interface_output sq_addr_enqueue_output;
+    dequeue_fifo_interface_input sq_addr_dequeue_input;
+    dequeue_fifo_interface_output sq_addr_dequeue_output;
+    structure_fifo_interface_input sq_addr_structure_input;
+    structure_fifo_interface_output sq_addr_structure_output;
+    
     ////////////////////////////////////////////////////
     //Implementation
 
@@ -95,12 +123,12 @@ module load_store_queue //ID-based input buffer for Load/Store Unit
     //To allow additional loads with a full store queue would require
     //extra logic to handle the case where there is a collision and the
     //sq is full
-    assign lsq.full = sq.full;
+    assign lsq_output.full = sq_ls_input.full;
     
     //Address hash for load-store collision checking
     addr_hash #(.USE_BIT_3(~CONFIG.INCLUDE_UNIT.FPU))
     lsq_addr_hash (
-        .addr (lsq.data_in.offset),
+        .addr (lsq_input.data_in.offset),
         .addr_hash (addr_hash)
     );
 
@@ -110,52 +138,55 @@ module load_store_queue //ID-based input buffer for Load/Store Unit
     load_queue_fifo (
         .clk(clk),
         .rst(rst),
-        .fifo(lq)
+        .fifo_input(lq_structure_input),
+        .fifo_output(lq_structure_output)
     );
     cva5_fifo #(.DATA_TYPE(addr_entry_t), .FIFO_DEPTH(MAX_IDS))
     load_queue_addr_fifo (
         .clk(clk),
         .rst(rst),
-        .fifo(lq_addr)
+        .fifo_input(lq_addr_structure_input),
+        .fifo_output(lq_addr_structure_output)
     );
 
     //FIFO control signals
-    assign lq.push = lsq.push & lsq.data_in.load;
-    assign lq.potential_push = lsq.potential_push;
-    assign lq.pop = load_pop | lq_addr_discard;
+    assign lq_enqueue_output.push = lsq_input.push & lsq_input.data_in.load;
+    assign lq_enqueue_output.potential_push = lsq.potential_push;
+    assign lq_dequeue.pop = load_pop | lq_addr_discard;
 
-    assign lq_addr.push = lsq.addr_push & lsq.addr_data_in.rnw;
-    assign lq_addr.potential_push = lq_addr.push;
-    assign lq_addr.data_in.addr = lsq.addr_data_in.addr;
-    assign lq_addr.data_in.subunit = lsq.addr_data_in.subunit;
-    assign lq_addr.data_in.discard = lsq.addr_data_in.discard;
-    assign lq_addr.pop = load_pop | lq_addr_discard;
+    assign lq_addr_enqueue_output.push = lsq_input.addr_push & lsq_input.addr_data_in.rnw;
+    assign lq_addr_enqueue_output.potential_push = lq_addr_structure_input.push;
+    assign lq_addr_enqueue_output.data_in.addr = lsq_input.addr_data_in.addr;
+    assign lq_addr_enqueue_output.data_in.subunit = lsq_input.addr_data_in.subunit;
+    assign lq_addr_enqueue_output.data_in.discard = lsq_input.addr_data_in.discard;
+    assign lq_addr_dequeue_output.pop = load_pop | lq_addr_discard;
 
-    assign lq_addr_discard = lq_addr.valid ? lq_addr.data_out.discard : lsq.addr_push & lsq.addr_data_in.rnw & lsq.addr_data_in.discard;
+    assign lq_addr_discard = lq_addr_dequeue_input.valid ? lq_addr_dequeue_input.data_out.discard : lsq_input.addr_push & lsq_input.addr_data_in.rnw & lsq_input.addr_data_in.discard;
 
     //FIFO data ports
-    assign lq.data_in = '{
-        offset : lsq.data_in.offset,
-        fn3 : lsq.data_in.fn3,
-        fp : lsq.data_in.fp,
-        double : lsq.data_in.double,
-        amo : lsq.data_in.amo,
-        amo_type : lsq.data_in.amo_type,
-        amo_wdata : lsq.data_in.data,
-        id : lsq.data_in.id, 
-        store_collision : potential_store_conflict | (CONFIG.INCLUDE_AMO & lsq.data_in.amo), //Collision forces sequential consistence
+    assign lq_enqueue_output.data_in = '{
+        offset : lsq_input.data_in.offset,
+        fn3 : lsq_input.data_in.fn3,
+        fp : lsq_input.data_in.fp,
+        double : lsq_input.data_in.double,
+        amo : lsq_input.data_in.amo,
+        amo_type : lsq_input.data_in.amo_type,
+        amo_wdata : lsq_input.data_in.data,
+        id : lsq_input.data_in.id, 
+        store_collision : potential_store_conflict | (CONFIG.INCLUDE_AMO & lsq_input.data_in.amo), //Collision forces sequential consistence
         sq_index : sq_index
     };
     ////////////////////////////////////////////////////
     //Store Queue
-    assign sq.push = lsq.push & (lsq.data_in.store | lsq.data_in.cache_op);
-    assign sq.pop = store_pop | sq_addr_discard;
-    assign sq.data_in = lsq.data_in;
+    assign sq_enqueue_output.push = lsq_input.push & (lsq_input.data_in.store | lsq_input.data_in.cache_op);
+    assign sq_dequeue_output.pop = store_pop | sq_addr_discard;
+    assign sq_enqueue_output.data_in = lsq_input.data_in;
 
     store_queue  # (.CONFIG(CONFIG)) sq_block (
         .clk (clk),
         .rst (rst),
-        .sq (sq),
+        .sq_input (sq_queue_input),
+        .sq_output (sq_queue_output),
         .store_forward_wb_group (store_forward_wb_group),
         .fp_store_forward_wb_group (fp_store_forward_wb_group),
         .addr_hash (addr_hash),
