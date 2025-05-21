@@ -32,7 +32,9 @@ module amo_unit
         input logic clk,
         input logic rst,
 
-        amo_interface.amo_unit agents[NUM_UNITS]
+        //amo_interface.amo_unit agents[NUM_UNITS]
+        amo_unit_amo_interface_input agents_input[NUM_UNITS],
+        amo_unit_amo_interface_input agents_output[NUM_UNITS],
     );
 
     localparam RESERVATION_WIDTH = 30 - $clog2(RESERVATION_WORDS);
@@ -53,16 +55,16 @@ module amo_unit
     logic[31:0] rd;
 
     generate for (genvar i = 0; i < NUM_UNITS; i++) begin : gen_unpacking
-        assign set_reservation[i] = agents[i].set_reservation;
-        assign clear_reservation[i] = agents[i].clear_reservation;
-        assign reservation[i] = agents[i].reservation[31-:RESERVATION_WIDTH];
-        assign agents[i].reservation_valid = lr_valid & lr_addr == reservation[i];
+        assign set_reservation[i] = agents_input[i].set_reservation;
+        assign clear_reservation[i] = agents_input[i].clear_reservation;
+        assign reservation[i] = agents_input[i].reservation[31-:RESERVATION_WIDTH];
+        assign agents_output[i].reservation_valid = lr_valid & lr_addr == reservation[i];
 
-        assign rmw_valid[i] = agents[i].rmw_valid;
-        assign op[i] = agents[i].op;
-        assign rs1[i] = agents[i].rs1;
-        assign rs2[i] = agents[i].rs2;
-        assign agents[i].rd = rd;
+        assign rmw_valid[i] = agents_input[i].rmw_valid;
+        assign op[i] = agents_input[i].op;
+        assign rs1[i] = agents_input[i].rs1;
+        assign rs2[i] = agents_input[i].rs2;
+        assign agents_input[i].rd = rd;
     end endgenerate
 
     ////////////////////////////////////////////////////
