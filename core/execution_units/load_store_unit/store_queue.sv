@@ -33,7 +33,9 @@ module store_queue
         input logic clk,
         input logic rst,
 
-        store_queue_interface.queue sq,
+        //store_queue_interface.queue sq,
+        queue_store_queue_interface_input sq_input,
+        queue_store_queue_interface_output sq_output,
         input logic [$clog2(CONFIG.NUM_WB_GROUPS)-1:0] store_forward_wb_group,
         input logic [1:0] fp_store_forward_wb_group,
 
@@ -98,8 +100,8 @@ module store_queue
     //Implementation     
 
     //Store Queue indicies
-    assign sq_index_next = sq_index + LOG2_SQ_DEPTH'(sq.push);
-    assign sq_oldest_next = sq_oldest + LOG2_SQ_DEPTH'(sq.pop);
+    assign sq_index_next = sq_index + LOG2_SQ_DEPTH'(sq_input.push);
+    assign sq_oldest_next = sq_oldest + LOG2_SQ_DEPTH'(sq_input.pop);
 
     always_ff @ (posedge clk) begin
         if (rst) begin 
@@ -111,20 +113,20 @@ module store_queue
         end
     end
 
-    assign new_request_one_hot = CONFIG.SQ_DEPTH'(sq.push) << sq_index;
-    assign issued_one_hot = CONFIG.SQ_DEPTH'(sq.pop) << sq_oldest;
+    assign new_request_one_hot = CONFIG.SQ_DEPTH'(sq_input.push) << sq_index;
+    assign issued_one_hot = CONFIG.SQ_DEPTH'(sq_input.pop) << sq_oldest;
 
     assign valid_next = (valid | new_request_one_hot) & ~issued_one_hot;
     always_ff @ (posedge clk) begin
         if (rst) begin
             valid <= '0;
-            sq.full <= 0;
+            sq_output.full <= 0;
         end else begin
             valid <= valid_next;
-            sq.full <= &valid_next;
+            sq_output.full <= &valid_next;
         end
     end
-    assign sq.empty = ~|valid;
+    assign sq_output.empty = ~|valid;
 
     //SQ attributes and issue data
     lutram_1w_1r #(.DATA_TYPE(sq_entry_t), .DEPTH(CONFIG.SQ_DEPTH))
@@ -132,14 +134,14 @@ module store_queue
         .clk(clk),
         .waddr(sq_index),
         .raddr(sq_oldest_next),
-        .ram_write(sq.push),
+        .ram_write(sq_input.push),
         .new_ram_data('{
-            offset : sq.data_in.offset,
-            be : sq.data_in.be,
-            cache_op : sq.data_in.cache_op,
+            offset : sq_input.data_in.offset,
+            be : sq_input.data_in.be,
+            cache_op : sq_input.data_in.cache_op,
             data : '0,
-            fp : sq.data_in.fp,
-            double : sq.data_in.double,
+            fp : sq_input.data_in.fp,
+            double : sq_input.data_in.double,
             fp_data : '0
         }),
         .ram_data_out(output_entry)
@@ -151,10 +153,10 @@ module store_queue
     lutram_1w_1r #(.DATA_TYPE(logic[1:0]), .DEPTH(MAX_IDS))
     store_alignment (
         .clk(clk),
-        .waddr(sq.data_in.id),
+        .waddr(sq_input.data_in.id),
         .raddr(store_retire.id),
-        .ram_write(sq.push),
-        .new_ram_data(sq.data_in.offset[1:0]),
+        .ram_write(sq_input.push),
+        .new_ram_data(sq_input.data_in.offset[1:0]),
         .ram_data_out(retire_alignment)
     );
     //Compare store addr-hashes against new load addr-hash
@@ -163,7 +165,7 @@ module store_queue
         potential_store_conflict = 0;
         for (int i = 0; i < CONFIG.SQ_DEPTH; i++) begin
             potential_store_conflict |= {(valid[i] & ~issued_one_hot[i]), addr_hash} == {1'b1, hashes[i]};
-            potential_store_conflict |= {(valid[i] & ~issued_one_hot[i] & ids_valid[i]), sq.data_in.id} == {1'b1, ids[i]};
+            potential_store_conflict |= {(valid[i] & ~issued_one_hot[i] & ids_valid[i]), sq_input.data_in.id} == {1'b1, ids[i]};
         end
     end
     ////////////////////////////////////////////////////
@@ -173,8 +175,8 @@ module store_queue
         for (int i = 0; i < CONFIG.SQ_DEPTH; i++) begin
             if (new_request_one_hot[i]) begin
                 hashes[i] <= addr_hash;
-                ids[i] <= sq.data_in.id_needed;
-                ids_valid[i] <= CONFIG.INCLUDE_UNIT.FPU & sq.data_in.fp ? |fp_store_forward_wb_group : |store_forward_wb_group;
+                ids[i] <= sq_input.data_in.id_needed;
+                ids_valid[i] <= CONFIG.INCLUDE_UNIT.FPU & sq_input.data_in.fp ? |fp_store_forward_wb_group : |store_forward_wb_group;
             end
         end
     end
@@ -184,7 +186,7 @@ module store_queue
         if (rst)
             released_count <= 0;
         else
-            released_count <= released_count + (LOG2_SQ_DEPTH + 1)'(store_retire.valid) - (LOG2_SQ_DEPTH + 1)'(sq.pop);
+            released_count <= released_count + (LOG2_SQ_DEPTH + 1)'(store_retire.valid) - (LOG2_SQ_DEPTH + 1)'(sq_input.pop);
     end
 
     ////////////////////////////////////////////////////
@@ -200,14 +202,14 @@ module store_queue
     lutram_1w_1r #(.DATA_TYPE(retire_table_t), .DEPTH(MAX_IDS))
     store_retire_table_lutram (
         .clk(clk),
-        .waddr(sq.data_in.id),
+        .waddr(sq_input.data_in.id),
         .raddr(store_retire.id),
-        .ram_write(sq.push),
+        .ram_write(sq_input.push),
         .new_ram_data('{
-            id_needed : sq.data_in.id_needed,
+            id_needed : sq_input.data_in.id_needed,
             wb_group : store_forward_wb_group,
             fp_wb_group : fp_store_forward_wb_group,
-            fp : sq.data_in.fp,
+            fp : sq_input.data_in.fp,
             sq_index : sq_index
         }),
         .ram_data_out(retire_table_out)
@@ -220,10 +222,10 @@ module store_queue
     lutram_1w_1r #(.DATA_TYPE(logic[31:0]), .DEPTH(MAX_IDS))
     non_forwarded_port (
         .clk(clk),
-        .waddr(sq.data_in.id),
+        .waddr(sq_input.data_in.id),
         .raddr(store_retire.id),
-        .ram_write(sq.push),
-        .new_ram_data(sq.data_in.data),
+        .ram_write(sq_input.push),
+        .new_ram_data(sq_input.data_in.data),
         .ram_data_out(wb_data[0])
     );
 
@@ -248,10 +250,10 @@ module store_queue
         lutram_1w_1r #(.DATA_TYPE(logic[FLEN-1:0]), .DEPTH(MAX_IDS))
         fp_non_forwarded_port (
             .clk(clk),
-            .waddr(sq.data_in.id),
+            .waddr(sq_input.data_in.id),
             .raddr(store_retire.id),
-            .ram_write(sq.push),
-            .new_ram_data(sq.data_in.fp_data),
+            .ram_write(sq_input.push),
+            .new_ram_data(sq_input.data_in.fp_data),
             .ram_data_out(fp_wb_data[0])
         );
     end
@@ -313,8 +315,8 @@ module store_queue
         .ram_data_out(sq_data_out)
     );
 
-    assign sq.valid = |released_count;
-    assign sq.data_out = '{
+    assign sq_output.valid = |released_count;
+    assign sq_output.data_out = '{
         offset : output_entry_r.offset,
         be : output_entry_r.be,
         cache_op : output_entry_r.cache_op,
@@ -331,9 +333,9 @@ module store_queue
     ////////////////////////////////////////////////////
     //Assertions
     sq_overflow_assertion:
-        assert property (@(posedge clk) disable iff (rst) sq.push |-> (~sq.full | sq.pop)) else $error("sq overflow");
+    assert property (@(posedge clk) disable iff (rst) sq_input.push |-> (~sq_output.full | sq_input.pop)) else $error("sq overflow");
     fifo_underflow_assertion:
-        assert property (@(posedge clk) disable iff (rst) sq.pop |-> sq.valid) else $error("sq underflow");
+        assert property (@(posedge clk) disable iff (rst) sq_input.pop |-> sq_output.valid) else $error("sq underflow");
 
 
 endmodule
