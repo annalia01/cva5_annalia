@@ -567,7 +567,7 @@ module dcache_inv
         .a_wdata({CONFIG.DCACHE.WAYS{db_wdata}}),
         .a_addr(db_addr),
         .b_en(ls_input.new_request),
-        .b_addr(addr_utils.getDataLineAddr(stage0.addr)),
+        .b_addr(`addr_utils_getDataLineAddr(stage0.addr))
         .b_rdata(db_entries),
     .*);
 
