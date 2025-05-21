@@ -128,7 +128,7 @@ typedef struct packed {
     logic write;
     logic lock;
     logic [3:0] byteenable;
-    logic [31:0] wirtedata;
+    logic [31:0] writedata;
 } master_avalon_interface_output;
 
 typedef struct packed {
