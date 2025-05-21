@@ -132,10 +132,10 @@ module load_store_unit
 
     //Subunit signals
     //amo_interface amo_if[NUM_SUB_UNITS]();
-    subunit_amo_interface_input amo_if_subunit_input;
-    subunit_amo_interface_output amo_if_subunit_output;
-    amo_unit_amo_interface_input amo_if_amo_unit_input;
-    amo_unit_amo_interface_output amo_if_amo_unit_output;
+    subunit_amo_interface_input amo_if_subunit_input[NUM_SUB_UNITS];
+    subunit_amo_interface_output amo_if_subunit_output[NUM_SUB_UNITS];
+    amo_unit_amo_interface_input amo_if_amo_unit_input[NUM_SUB_UNITS];
+    amo_unit_amo_interface_output amo_if_amo_unit_output[NUM_SUB_UNITS];
 
 
     addr_range_t dlocal_mem_addr_utils = '{
@@ -392,7 +392,7 @@ module load_store_unit
         //AMO instructions AQ-RL consider all memory regions; force write drain for simplicity
         logic fiom_amo_hold_r;
         logic set_fiom_amo_hold;
-        assign set_fiom_amo_hold = lsq.load_valid & shared_inputs.amo & fiom & write_outstanding;
+        assign set_fiom_amo_hold = lsq_ls_input.load_valid & shared_inputs.amo & fiom & write_outstanding;
         assign fiom_amo_hold = set_fiom_amo_hold | fiom_amo_hold_r;
 
         always_ff @(posedge clk) begin
@@ -426,8 +426,8 @@ module load_store_unit
         assign senv_illegal = CONFIG.INCLUDE_CBO & (issue_attr.is_cbo & issue_attr.cbo_type == INVAL ? senvcfg.cbie == 2'b00 : ~senvcfg.cbcfe);
         assign illegal_cbo = CONFIG.MODES == MU ? current_privilege == USER_PRIVILEGE & menv_illegal : (current_privilege != MACHINE_PRIVILEGE & menv_illegal) | (current_privilege == USER_PRIVILEGE & senv_illegal);
 
-        assign nomatch_fault = tlb.done & ~|sub_unit_address_match;
-        assign late_exception = tlb.is_fault | nomatch_fault;
+        assign nomatch_fault = tlb_input.done & ~|sub_unit_address_match;
+        assign late_exception = tlb_input.is_fault | nomatch_fault;
 
         //Hold writeback exceptions until they are ready to retire
         logic rd_zero_r;
@@ -495,8 +495,8 @@ module load_store_unit
     ////////////////////////////////////////////////////
     //Load-Store status
     assign load_store_status = '{
-        outstanding_store : ~lsq.sq_empty | write_outstanding,
-        idle : lsq.empty & (~load_attributes.valid) & (&unit_ready) & (~write_outstanding)
+        outstanding_store : ~lsq_ls_input.sq_empty | write_outstanding,
+        idle : lsq_ls_input.empty & (~load_attributes_dequeue_input.valid) & (&unit_ready) & (~write_outstanding)
     };
 
     ////////////////////////////////////////////////////
@@ -540,7 +540,7 @@ module load_store_unit
 
     ////////////////////////////////////////////////////
     //Load Store Queue
-    assign lsq.data_in = '{
+    assign lsq_ls_output.data_in = '{
         offset : virtual_address[11:0],
         fn3 : issue_stage.fn3,
         be : be,
@@ -557,27 +557,28 @@ module load_store_unit
         fp_data : fp_rf[RS2]
     };
 
-    assign lsq.potential_push = issue_input.possible_issue;
-    assign lsq.push = issue_input.new_request & ~issue_attr.is_fence;
+    assign lsq_ls_output.potential_push = issue_input.possible_issue;
+    assign lsq_ls_output.push = issue_input.new_request & ~issue_attr.is_fence;
 
     load_store_queue  # (.CONFIG(CONFIG)) lsq_block (
         .clk (clk),
         .rst (rst),
         .gc (gc),
-        .lsq (lsq),
+        .lsq_input (lsq_queue_input),
+        .lsq_output (lsq_queue_output),
         .store_forward_wb_group (rs2_inuse ? rd_attributes.wb_group : '0),
         .fp_store_forward_wb_group ({fp_rs2_inuse & rd_attributes.fp_wb_group, fp_rs2_inuse & ~rd_attributes.fp_wb_group}),
         .wb_packet (wb_packet),
         .fp_wb_packet (fp_wb_packet),
         .store_retire (store_retire)
     );
-    assign shared_inputs = sel_load ? lsq.load_data_out : lsq.store_data_out;
-    assign lsq.load_pop = sub_unit_load_issue;
-    assign lsq.store_pop = sub_unit_store_issue;
+    assign shared_inputs = sel_load ? lsq_ls_input.load_data_out : lsq_ls_input.store_data_out;
+    assign lsq_ls_output.load_pop = sub_unit_load_issue;
+    assign lsq_ls_output.store_pop = sub_unit_store_issue;
 
     //Physical address passed separately
-    assign lsq.addr_push = tlb_input.done | tlb_input.is_fault | exception_lsq_push;
-    assign lsq.addr_data_in = '{
+    assign lsq_ls_output.addr_push = tlb_input.done | tlb_input.is_fault | exception_lsq_push;
+    assign lsq_ls_output.addr_data_in = '{
         addr : tlb_input.physical_address[31:12],
         rnw : tlb_lq,
         discard : late_exception | exception_lsq_push,
@@ -592,30 +593,30 @@ module load_store_unit
     ////////////////////////////////////////////////////
     //Unit tracking
     always_ff @ (posedge clk) begin
-        if (load_attributes.push)
+        if (load_attributes_structure_input.push)
             last_unit <= subunit_id;
     end
 
     //When switching units, ensure no outstanding loads so that there can be no timing collisions with results
-    assign unit_switch = lsq.load_valid & (subunit_id != last_unit) & load_attributes.valid;
+    assign unit_switch = lsq_ls_input.load_valid & (subunit_id != last_unit) & load_attributes_dequeue_input.valid;
     always_ff @ (posedge clk) begin
-        unit_switch_in_progress <= (unit_switch_in_progress | unit_switch) & ~load_attributes.valid;
+        unit_switch_in_progress <= (unit_switch_in_progress | unit_switch) & ~load_attributes_dequeue_input.valid;
     end
     assign unit_switch_hold = unit_switch | unit_switch_in_progress | fiom_amo_hold;
 
     ////////////////////////////////////////////////////
     //Primary Control Signals
-    assign sel_load = lsq.load_valid;
+    assign sel_load = lsq_ls_input.load_valid;
 
     assign sub_unit_ready = unit_ready[subunit_id] & (~unit_switch_hold);
     assign load_response = |unit_data_valid;
     assign load_complete = load_response & (~exception_output.valid | exception_is_store);
 
     //TLB status and exceptions can be ignored because they will prevent instructions from issuing
-    assign issue_output.ready = ~lsq.full & ~fence_hold;
+    assign issue_output.ready = ~lsq_ls_input.full & ~fence_hold;
 
-    assign sub_unit_load_issue = sel_load & lsq.load_valid & sub_unit_ready;
-    assign sub_unit_store_issue = (lsq.store_valid & ~sel_load) & sub_unit_ready;
+    assign sub_unit_load_issue = sel_load & lsq_ls_input.load_valid & sub_unit_ready;
+    assign sub_unit_store_issue = (lsq_ls_input.store_valid & ~sel_load) & sub_unit_ready;
     assign sub_unit_issue = sub_unit_load_issue | sub_unit_store_issue;
 
     assign write_outstanding = |unit_write_outstanding;
@@ -639,99 +640,113 @@ module load_store_unit
     );
 
     always_comb begin
-        case(lsq.load_data_out.fn3)
+        case(lsq_ls_input.load_data_out.fn3)
             LS_B_fn3, L_BU_fn3 : final_mux_sel = 0;
             LS_H_fn3, L_HU_fn3 : final_mux_sel = 1;
             default : final_mux_sel = 2; //LS_W_fn3
         endcase
     end
     
-    assign load_attributes.data_in = '{
-        is_signed : ~|lsq.load_data_out.fn3[2:1],
-        byte_addr : lsq.load_data_out.addr[1:0],
-        sign_sel : lsq.load_data_out.addr[1:0] | {1'b0, lsq.load_data_out.fn3[0]},//halfword
+    assign load_attributes_enqueue_output.data_in = '{
+        is_signed : ~|lsq_ls_input.load_data_out.fn3[2:1],
+        byte_addr : lsq_ls_input.load_data_out.addr[1:0],
+        sign_sel : lsq_ls_input.load_data_out.addr[1:0] | {1'b0, lsq_ls_input.load_data_out.fn3[0]},//halfword
         final_mux_sel : final_mux_sel,
-        id : lsq.load_data_out.id,
+        id : lsq_ls_input.load_data_out.id,
         subunit_id : subunit_id,
-        fp_op : lsq.load_data_out.fp_op
+        fp_op : lsq_ls_input.load_data_out.fp_op
     };
-    assign load_attributes.push = sub_unit_load_issue;
-    assign load_attributes.potential_push = load_attributes.push;
+    assign load_attributes_enqueue_output.push = sub_unit_load_issue;
+    assign load_attributes_enqueue_output.potential_push = load_attributes_structure_input.push;
     
     cva5_fifo #(.DATA_TYPE(load_attributes_t), .FIFO_DEPTH(ATTRIBUTES_DEPTH))
     attributes_fifo (
         .clk (clk),
         .rst (rst), 
-        .fifo (load_attributes)
+        .fifo_input (load_attributes_structure_input),
+        .fifo_output (load_attributes_structure_output)
     );
 
-    assign load_attributes.pop = load_complete;
-    assign wb_attr = load_attributes.data_out;
+    assign load_attributes_dequeue_output.pop = load_complete;
+    assign wb_attr = load_attributes_dequeue_input.data_out;
     ////////////////////////////////////////////////////
     //Unit Instantiation
     generate for (genvar i=0; i < NUM_SUB_UNITS; i++) begin : gen_load_store_sources
-        assign sub_unit[i].new_request = sub_unit_issue & subunit_id == i;
-        assign sub_unit[i].addr = shared_inputs.addr;
-        assign sub_unit[i].re = shared_inputs.load;
-        assign sub_unit[i].we = shared_inputs.store;
-        assign sub_unit[i].be = shared_inputs.be;
-        assign sub_unit[i].data_in = shared_inputs.data_in;
+        assign sub_unit_controller_output[i].new_request = sub_unit_issue & subunit_id == i;
+        assign sub_unit_controller_output[i].addr = shared_inputs.addr;
+        assign sub_unit_controller_output[i].re = shared_inputs.load;
+        assign sub_unit_controller_output[i].we = shared_inputs.store;
+        assign sub_unit_controller_output[i].be = shared_inputs.be;
+        assign sub_unit_controller_output[i].data_in = shared_inputs.data_in;
 
-        assign unit_ready[i] = sub_unit[i].ready;
-        assign unit_data_valid[i] = sub_unit[i].data_valid;
-        assign unit_data_array[i] = sub_unit[i].data_out;
+        assign unit_ready[i] = sub_unit_controller_input[i].ready;
+        assign unit_data_valid[i] = sub_unit_controller_input[i].data_valid;
+        assign unit_data_array[i] = sub_unit_controller_input[i].data_out;
     end
     endgenerate
 
     generate if (CONFIG.INCLUDE_DLOCAL_MEM) begin : gen_ls_local_mem
-        assign sub_unit_address_match[LOCAL_MEM_ID] = dlocal_mem_addr_utils.address_range_check(tlb.physical_address);
+        assign sub_unit_address_match[LOCAL_MEM_ID] = dlocal_mem_addr_utils.address_range_check(tlb_input.physical_address);
         local_mem_sub_unit d_local_mem (
             .clk (clk), 
             .rst (rst),
             .write_outstanding (unit_write_outstanding[LOCAL_MEM_ID]),
             .amo (shared_inputs.amo),
             .amo_type (shared_inputs.amo_type),
-            .amo_unit (amo_if[LOCAL_MEM_ID]),
-            .unit (sub_unit[LOCAL_MEM_ID]),
-            .local_mem (data_bram)
+            .amo_unit_input (amo_if_subunit_input[LOCAL_MEM_ID]),
+            .amo_unit_output (amo_if_subunit_output[LOCAL_MEM_ID]),
+            .unit_input (sub_unit_responder_input[LOCAL_MEM_ID]),
+            .unit_output (sub_unit_responder_output[LOCAL_MEM_ID]),
+            .local_mem_input (data_bram_input),
+            .local_mem_output (data_bram_output)
         );
         end
     endgenerate
 
     generate if (CONFIG.INCLUDE_PERIPHERAL_BUS) begin : gen_ls_pbus
-            assign sub_unit_address_match[BUS_ID] = dpbus_addr_utils.address_range_check(tlb.physical_address);
+        assign sub_unit_address_match[BUS_ID] = dpbus_addr_utils.address_range_check(tlb_input.physical_address);
             if(CONFIG.PERIPHERAL_BUS_TYPE == AXI_BUS) begin : gen_axi
                 axi_master axi_bus (
                     .clk (clk),
                     .rst (rst),
                     .write_outstanding (unit_write_outstanding[BUS_ID]),
-                    .m_axi (m_axi),
+                    .m_axi_input (m_axi_input),
+                    .m_axi_output (m_axi_output),
                     .amo (shared_inputs.amo),
                     .amo_type (shared_inputs.amo_type),
-                    .amo_unit (amo_if[BUS_ID]),
-                    .ls (sub_unit[BUS_ID])
+                    .amo_unit_input (amo_if_subunit_input[BUS_ID]),
+                    .amo_unit_output (amo_if_subunit_output[BUS_ID]),
+                    .ls_input (sub_unit_responder_input[BUS_ID]),
+                    .ls_output (sub_unit_responder_output[BUS_ID])
+                    
                 ); //Lower two bits of fn3 match AXI specification for request size (byte/halfword/word)
             end else if (CONFIG.PERIPHERAL_BUS_TYPE == WISHBONE_BUS) begin : gen_wishbone
                 wishbone_master #(.LR_WAIT(CONFIG.AMO_UNIT.LR_WAIT), .INCLUDE_AMO(CONFIG.INCLUDE_AMO)) wishbone_bus (
                     .clk (clk),
                     .rst (rst),
                     .write_outstanding (unit_write_outstanding[BUS_ID]),
-                    .wishbone (dwishbone),
+                    .wishbone_input (dwishbone_input),
+                    .wishbone_output (dwishbone_output)
                     .amo (shared_inputs.amo),
                     .amo_type (shared_inputs.amo_type),
-                    .amo_unit (amo_if[BUS_ID]),
-                    .ls (sub_unit[BUS_ID])
+                    .amo_unit_input (amo_if_subunit_input[BUS_ID]),
+                    .amo_unit_output (amo_if_subunit_output[BUS_ID]),
+                    .ls_input (sub_unit_responder_input[BUS_ID]),
+                    .ls_output (sub_unit_responder_output[BUS_ID])
                 );
             end else if (CONFIG.PERIPHERAL_BUS_TYPE == AVALON_BUS) begin : gen_avalon
                 avalon_master #(.LR_WAIT(CONFIG.AMO_UNIT.LR_WAIT), .INCLUDE_AMO(CONFIG.INCLUDE_AMO)) avalon_bus (
                     .clk (clk),
                     .rst (rst),
                     .write_outstanding (unit_write_outstanding[BUS_ID]),
-                    .m_avalon (m_avalon),
+                    .m_avalon_input (m_avalon_input),
+                    .m_avalon_output (m_avalon_output),
                     .amo (shared_inputs.amo),
                     .amo_type (shared_inputs.amo_type),
-                    .amo_unit (amo_if[BUS_ID]),
-                    .ls (sub_unit[BUS_ID])
+                    .amo_unit_input (amo_if_subunit_input[BUS_ID]),
+                    .amo_unit_output (amo_if_subunit_output[BUS_ID]),
+                    .ls_input (sub_unit_responder_input[BUS_ID]),
+                    .ls_output (sub_unit_responder_output[BUS_ID])
                 );
             end
         end
@@ -741,37 +756,42 @@ module load_store_unit
             logic uncacheable_load;
             logic uncacheable_store;
 
-            assign sub_unit_address_match[DCACHE_ID] = dcache_addr_utils.address_range_check(tlb.physical_address);
+        assign sub_unit_address_match[DCACHE_ID] = dcache_addr_utils.address_range_check(tlb_input.physical_address);
 
             assign uncacheable_load = CONFIG.DCACHE.USE_NON_CACHEABLE & uncacheable_utils.address_range_check(shared_inputs.addr);
             assign uncacheable_store = CONFIG.DCACHE.USE_NON_CACHEABLE & uncacheable_utils.address_range_check(shared_inputs.addr);
 
             if (CONFIG.DCACHE.USE_EXTERNAL_INVALIDATIONS) begin : gen_full_dcache
                 dcache_inv #(.CONFIG(CONFIG)) data_cache (
-                    .mem(mem_input),
-                    .mem(mem_output),
+                    .mem_input(mem_input),
+                    .mem_output(mem_output),
                     .write_outstanding(unit_write_outstanding[DCACHE_ID]),
                     .amo(shared_inputs.amo),
                     .amo_type(shared_inputs.amo_type),
-                    .amo_unit(amo_if[DCACHE_ID]),
+                    .amo_unit_input (amo_if_subunit_input[DCACHE_ID]),
+                    .amo_unit_output (amo_if_subunit_output[DCACHE_ID]),
                     .uncacheable(uncacheable_load | uncacheable_store),
                     .cbo(shared_inputs.cache_op),
-                    .ls(sub_unit[DCACHE_ID]),
-                    .load_peek(lsq.load_valid),
-                    .load_addr_peek(lsq.load_data_out.addr),
+                    .ls_input(sub_unit_responder_input[DCACHE_ID]),
+                    .ls_output(sub_unit_responder_output[DCACHE_ID]),
+                    .load_peek(lsq_ls_input.load_valid),
+                    .load_addr_peek(lsq_ls_input.load_data_out.addr),
                 .*);
             end else begin : gen_small_dcache
                 dcache_noinv #(.CONFIG(CONFIG)) data_cache (
-                    .mem(mem),
+                    .mem_input(mem_input),
+                    .mem_output(mem_output),
                     .write_outstanding(unit_write_outstanding[DCACHE_ID]),
                     .amo(shared_inputs.amo),
                     .amo_type(shared_inputs.amo_type),
-                    .amo_unit(amo_if[DCACHE_ID]),
+                    .amo_unit_input (amo_if_subunit_input[DCACHE_ID]),
+                    .amo_unit_output (amo_if_subunit_output[DCACHE_ID]),
                     .uncacheable(uncacheable_load | uncacheable_store),
                     .cbo(shared_inputs.cache_op),
-                    .ls(sub_unit[DCACHE_ID]),
-                    .load_peek(lsq.load_valid),
-                    .load_addr_peek(lsq.load_data_out.addr),
+                    .ls_input(sub_unit_responder_input[DCACHE_ID]),
+                    .ls_output(sub_unit_responder_output[DCACHE_ID]),
+                    .load_peek(lsq_ls_input.load_valid),
+                    .load_addr_peek(lsq_ls_input.load_data_out.addr),
                 .*);
             end
         end
@@ -782,7 +802,8 @@ module load_store_unit
             .NUM_UNITS(NUM_SUB_UNITS),
             .RESERVATION_WORDS(CONFIG.AMO_UNIT.RESERVATION_WORDS)
         ) amo_inst (
-            .agents(amo_if),
+            .agents_input(amo_if_amo_unit_input),
+            .agents_output(amo_if_amo_unit_output)
         .*);
     end endgenerate
 
@@ -842,13 +863,13 @@ module load_store_unit
 
     ////////////////////////////////////////////////////
     //Output bank
-    assign wb.rd = final_load_data;
-    assign wb.done = (load_complete & (~CONFIG.INCLUDE_UNIT.FPU | wb_attr.fp_op == INT_DONE)) | (exception_output.valid & ~exception_is_fp & ~exception_is_store);
-    assign wb.id = exception_output.valid & ~exception_is_store ? exception_id : wb_attr.id;
+    assign wb_output.rd = final_load_data;
+    assign wb_output.done = (load_complete & (~CONFIG.INCLUDE_UNIT.FPU | wb_attr.fp_op == INT_DONE)) | (exception_output.valid & ~exception_is_fp & ~exception_is_store);
+    assign wb_output.id = exception_output.valid & ~exception_is_store ? exception_id : wb_attr.id;
 
-    assign fp_wb.rd = fp_result;
-    assign fp_wb.done = (load_complete & (wb_attr.fp_op == SINGLE_DONE | wb_attr.fp_op == DOUBLE_DONE)) | (exception.valid & exception_is_fp & ~exception_is_store);
-    assign fp_wb.id = exception_output.valid & ~exception_is_store ? exception_id : wb_attr.id;
+    assign fp_wb_output.rd = fp_result;
+    assign fp_wb_output.done = (load_complete & (wb_attr.fp_op == SINGLE_DONE | wb_attr.fp_op == DOUBLE_DONE)) | (exception.valid & exception_is_fp & ~exception_is_store);
+    assign fp_wb_output.id = exception_output.valid & ~exception_is_store ? exception_id : wb_attr.id;
 
     ////////////////////////////////////////////////////
     //End of Implementation
@@ -857,7 +878,7 @@ module load_store_unit
     ////////////////////////////////////////////////////
     //Assertions
     spurious_load_complete_assertion:
-        assert property (@(posedge clk) disable iff (rst) load_complete |-> (load_attributes.valid && unit_data_valid[wb_attr.subunit_id]))
+    assert property (@(posedge clk) disable iff (rst) load_complete |-> (load_attributes_dequeue_input.valid && unit_data_valid[wb_attr.subunit_id]))
         else $error("Spurious load complete detected!");
 
 
