@@ -36,8 +36,13 @@ module dtlb
         input logic translation_on,
         input tlb_packet_t sfence,
         input logic [ASIDLEN-1:0] asid,
-        mmu_interface.tlb mmu,
-        tlb_interface.tlb tlb
+        //mmu_interface.tlb mmu,
+        tlb_mmu_interface_input mmu_input,
+        tlb_mmu_interface_output mmu_output,
+        
+        //tlb_interface.tlb tlb
+        tlb_tlb_interface_input tlb_input,
+        tlb_tlb_interface_output tlb_output
     );
     //////////////////////////////////////////
     localparam TAG_W = 20 - $clog2(DEPTH);
@@ -136,8 +141,8 @@ module dtlb
     logic [WAY_W-1:0] hit_way;
     logic hit;
 
-    assign cmp_tag = sfence.valid ? sfence.addr[31-:TAG_W] : tlb.virtual_address[31-:TAG_W];
-    assign cmp_tag_s = sfence.valid ? sfence.addr[31-:TAG_W_S] : tlb.virtual_address[31-:TAG_W_S];
+    assign cmp_tag = sfence.valid ? sfence.addr[31-:TAG_W] : tlb_input.virtual_address[31-:TAG_W];
+    assign cmp_tag_s = sfence.valid ? sfence.addr[31-:TAG_W_S] : tlb_input.virtual_address[31-:TAG_W_S];
     assign cmp_asid = sfence.valid ? sfence.asid : asid;
 
     always_ff @(posedge clk) begin
@@ -176,11 +181,11 @@ module dtlb
                 r : rdata[i].read,
                 default: 'x
             }),
-            .rnw(tlb.rnw),
+            .rnw(tlb_input.rnw),
             .execute(1'b0),
-            .mxr(mmu.mxr),
-            .sum(mmu.sum),
-            .privilege(mmu.privilege),
+            .mxr(mmu_input.mxr),
+            .sum(mmu_input.sum),
+            .privilege(mmu_input.privilege),
             .valid(perms_valid_comb[i])
         );
     end endgenerate
@@ -194,11 +199,11 @@ module dtlb
             r : rdata_s.read,
             default: 'x
         }),
-        .rnw(tlb.rnw),
+        .rnw(tlb_input.rnw),
         .execute(1'b0),
-        .mxr(mmu.mxr),
-        .sum(mmu.sum),
-        .privilege(mmu.privilege),
+        .mxr(mmu_input.mxr),
+        .sum(mmu_input.sum),
+        .privilege(mmu_input.privilege),
         .valid(perms_valid_comb_s)
     );
 
@@ -212,7 +217,7 @@ module dtlb
     .*);
 
     always_ff @(posedge clk) begin
-        if (tlb.new_request | sfence.valid) begin
+        if (tlb_input.new_request | sfence.valid) begin
             tlb_waddr <= tlb_raddr;
             tlb_waddr_s <= tlb_raddr_s;
         end
@@ -225,35 +230,35 @@ module dtlb
             tlb_raddr_s = sfence.addr_only ? sfence.addr[22 +: $clog2(DEPTH)] : flush_addr;
         end
         else begin
-            tlb_raddr = tlb.virtual_address[12 +: $clog2(DEPTH)];
-            tlb_raddr_s = tlb.virtual_address[22 +: $clog2(DEPTH)];
+            tlb_raddr = tlb_input.virtual_address[12 +: $clog2(DEPTH)];
+            tlb_raddr_s = tlb_input.virtual_address[22 +: $clog2(DEPTH)];
         end
     end
 
     assign wdata = '{
         valid : ~sfence_valid_r,
         asid : asid,
-        tag : mmu.virtual_address[31-:TAG_W],
-        ppn1 : mmu.upper_physical_address[19:10],
-        ppn0 : mmu.upper_physical_address[9:0],
-        dirty : mmu.perms.d,
-        globe : mmu.perms.g,
-        user : mmu.perms.u,
-        execute : mmu.perms.x,
-        write : mmu.perms.w,
-        read : mmu.perms.r
+        tag : mmu_output.virtual_address[31-:TAG_W],
+        ppn1 : mmu_input.upper_physical_address[19:10],
+        ppn0 : mmu_input.upper_physical_address[9:0],
+        dirty : mmu_input.perms.d,
+        globe : mmu_input.perms.g,
+        user : mmu_input.perms.u,
+        execute : mmu_input.perms.x,
+        write : mmu_input.perms.w,
+        read : mmu_input.perms.r
     };
     assign wdata_s = '{
         valid : ~sfence_valid_r,
         asid : asid,
-        tag : mmu.virtual_address[31-:TAG_W_S],
-        ppn1 : mmu.upper_physical_address[19:10],
-        dirty : mmu.perms.d,
-        globe : mmu.perms.g,
-        user : mmu.perms.u,
-        execute : mmu.perms.x,
-        write : mmu.perms.w,
-        read : mmu.perms.r
+        tag : mmu_output.virtual_address[31-:TAG_W_S],
+        ppn1 : mmu_input.upper_physical_address[19:10],
+        dirty : mmu_input.perms.d,
+        globe : mmu_input.perms.g,
+        user : mmu_input.perms.u,
+        execute : mmu_input.perms.x,
+        write : mmu_input.perms.w,
+        read : mmu_input.perms.r
     };
 
     always_comb begin
@@ -276,8 +281,8 @@ module dtlb
                     write_s = (~rdata_s.globe & asid_hit_s) & tag_hit_s; 
                 end
                 default: begin
-                    write[i] = mmu.write_entry & ~mmu.superpage & replacement_way[i];
-                    write_s = mmu.write_entry & mmu.superpage;
+                    write[i] = mmu_input.write_entry & ~mmu_input.superpage & replacement_way[i];
+                    write_s = mmu_input.write_entry & mmu_input.superpage;
                 end
             endcase
         end
@@ -290,33 +295,33 @@ module dtlb
 
     //MMU interface
     logic new_request_r;
-    assign mmu.request = translation_on & new_request_r & ~hit & ~perm_fail;
-    assign mmu.execute = 0;
+    assign mmu_output.request = translation_on & new_request_r & ~hit & ~perm_fail;
+    assign mmu_output.execute = 0;
 
     always_ff @(posedge clk) begin
-        new_request_r <= tlb.new_request;
-        if (tlb.new_request) begin
-            mmu.virtual_address <= tlb.virtual_address;
-            mmu.rnw <= tlb.rnw;
+        new_request_r <= tlb_input.new_request;
+        if (tlb_input.new_request) begin
+            mmu_output.virtual_address <= tlb_input.virtual_address;
+            mmu_output.rnw <= tlb_input.rnw;
         end
     end
 
     //TLB interface
-    assign tlb.done = (new_request_r & ((hit & ~perm_fail) | ~translation_on)) | mmu.write_entry;
-    assign tlb.ready = 1; //Not always ready, but requests will not be sent if it isn't done
-    assign tlb.is_fault = mmu.is_fault | (new_request_r & translation_on & perm_fail);
+    assign tlb_output.done = (new_request_r & ((hit & ~perm_fail) | ~translation_on)) | mmu_input.write_entry;
+    assign tlb_output.ready = 1; //Not always ready, but requests will not be sent if it isn't done
+    assign tlb_output.is_fault = mmu_input.is_fault | (new_request_r & translation_on & perm_fail);
 
 
     always_comb begin
-        tlb.physical_address[11:0] = mmu.virtual_address[11:0];
+        tlb_output.physical_address[11:0] = mmu_output.virtual_address[11:0];
         if (~translation_on)
-            tlb.physical_address[31:12] = mmu.virtual_address[31:12];
+            tlb_output.physical_address[31:12] = mmu_output.virtual_address[31:12];
         else if (new_request_r) begin
-            tlb.physical_address[31:22] = hit_ohot_s ? ppn1_s : ppn1[hit_way];
-            tlb.physical_address[21:12] = hit_ohot_s ? mmu.virtual_address[21:12] : ppn0[hit_way];
+            tlb_output.physical_address[31:22] = hit_ohot_s ? ppn1_s : ppn1[hit_way];
+            tlb_output.physical_address[21:12] = hit_ohot_s ? mmu_output.virtual_address[21:12] : ppn0[hit_way];
         end else begin
-            tlb.physical_address[31:22] = mmu.upper_physical_address[19:10];
-            tlb.physical_address[21:12] = mmu.superpage ? mmu.virtual_address[21:12] : mmu.upper_physical_address[9:0];
+            tlb_output.physical_address[31:22] = mmu_input.upper_physical_address[19:10];
+            tlb_output.physical_address[21:12] = mmu_input.superpage ? mmu_output.virtual_address[21:12] : mmu_input.upper_physical_address[9:0];
         end
     end
 
@@ -327,7 +332,7 @@ module dtlb
     ////////////////////////////////////////////////////
     //Assertions
     request_on_miss:
-        assert property (@(posedge clk) disable iff (rst) (mmu.request) |-> ~tlb.new_request)
+    assert property (@(posedge clk) disable iff (rst) (mmu_output.request) |-> ~tlb_input.new_request)
         else $error("Request during miss in TLB!");
 
 endmodule
