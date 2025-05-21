@@ -277,7 +277,7 @@ typedef struct packed {
     logic store_pop;
     logic addr_push;
     lsq_addr_entry_t addr_data_in;
-} queue_load_store_queue_interface_output;
+} queue_load_store_queue_interface_input;
 
 typedef struct packed {
     logic full;
@@ -287,7 +287,7 @@ typedef struct packed {
     logic store_valid;
     logic sq_empty;
     logic empty;
-} queue_load_store_queue_interface_input;
+} queue_load_store_queue_interface_output;
 
 typedef struct packed {
     lsq_entry_t data_in;
@@ -306,14 +306,14 @@ typedef struct packed {
     lsq_entry_t data_in;
     logic push;
     logic pop;
-} queue_store_queue_interface_output;
+} queue_store_queue_interface_input;
 
 typedef struct packed {
     logic full;
     sq_entry_t data_out;
     logic valid;
     logic empty;
-} queue_store_queue_interface_input;
+} queue_store_queue_interface_output;
 
 package cache_functions_pkg;
 
