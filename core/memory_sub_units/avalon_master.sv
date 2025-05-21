@@ -34,12 +34,20 @@ module avalon_master
         input logic rst,
 
         output logic write_outstanding,
-        avalon_interface.master m_avalon,
+        //avalon_interface.master m_avalon,
+        master_avalon_interface_input m_avalon_input,
+        master_avalon_interface_output m_avalon_output,
 
         input logic amo,
         input amo_t amo_type,
-        amo_interface.subunit amo_unit,
-        memory_sub_unit_interface.responder ls
+        //amo_interface.subunit amo_unit,
+
+        subunit_amo_interface_input amo_unit_input,
+        subunit_amo_interface_output amo_unit_output,
+        //memory_sub_unit_interface.responder ls
+        responder_memory_sub_unit_interface_input ls_input,
+        responder_memory_sub_unit_interface_output ls_output
+        
     );
 
     ////////////////////////////////////////////////////
@@ -59,113 +67,113 @@ module avalon_master
     logic request_is_sc;
     assign request_is_sc = amo & amo_type == AMO_SC_FN5;
 
-    assign amo_unit.set_reservation = ls.new_request & amo & amo_type == AMO_LR_FN5;
-    assign amo_unit.clear_reservation = ls.new_request;
-    assign amo_unit.reservation = ls.addr;
-    assign amo_unit.rs1 = ls.data_out;
-    assign amo_unit.rs2 = m_avalon.writedata;
+    assign amo_unit_output.set_reservation = ls_input.new_request & amo & amo_type == AMO_LR_FN5;
+    assign amo_unit_output.clear_reservation = ls_input.new_request;
+    assign amo_unit_output.reservation = ls_input.addr;
+    assign amo_unit_output.rs1 = ls_output.data_out;
+    assign amo_unit_output.rs2 = m_avalon_output.writedata;
 
     always_ff @(posedge clk) begin
-        m_avalon.addr[1:0] <= '0;
+        m_avalon_output.addr[1:0] <= '0;
         unique case (current_state)
             READY : begin //Accept any request
-                ls.ready <= ~ls.new_request | request_is_sc;
-                ls.data_out <= 32'b1;
-                ls.data_valid <= ls.new_request & request_is_sc;
-                m_avalon.addr[31:2] <= ls.addr[31:2];
-                m_avalon.byteenable <= ls.be;
-                m_avalon.writedata <= ls.data_in;
-                m_avalon.read <= ls.new_request & ls.re & ~request_is_sc;
-                m_avalon.write <= ls.new_request & ls.we;
-                m_avalon.lock <= ls.new_request & amo;
-                write_outstanding <= ls.new_request & (ls.we | amo);
-                amo_unit.rmw_valid <= 0;
-                amo_unit.op <= amo_type;
+                ls_output.ready <= ~ls_input.new_request | request_is_sc;
+                ls_output.data_out <= 32'b1;
+                ls_output.data_valid <= ls_input.new_request & request_is_sc;
+                m_avalon_output.addr[31:2] <= ls_input.addr[31:2];
+                m_avalon_output.byteenable <= ls_input.be;
+                m_avalon_output.writedata <= ls_input.data_in;
+                m_avalon_output.read <= ls_input.new_request & ls_input.re & ~request_is_sc;
+                m_avalon_output.write <= ls_input.new_request & ls_input.we;
+                m_avalon_output.lock <= ls_input.new_request & amo;
+                write_outstanding <= ls_input.new_request & (ls_input.we | amo);
+                amo_unit_output.rmw_valid <= 0;
+                amo_unit_output.op <= amo_type;
                 lock_counter <= '0;
-                if (ls.new_request & (~amo | amo_type == AMO_LR_FN5))
+                if (ls_input.new_request & (~amo | amo_type == AMO_LR_FN5))
                     current_state <= REQUESTING;
-                else if (ls.new_request & amo & amo_type != AMO_SC_FN5)
+                else if (ls_input.new_request & amo & amo_type != AMO_SC_FN5)
                     current_state <= REQUESTING_AMO_R;
             end
             REQUESTING : begin //Wait for response
-                ls.ready <= ~m_avalon.waitrequest;
-                ls.data_out <= m_avalon.readdata;
-                ls.data_valid <= m_avalon.read & ~m_avalon.waitrequest;
-                m_avalon.read <= m_avalon.read & m_avalon.waitrequest;
-                m_avalon.write <= m_avalon.write & m_avalon.waitrequest;
-                write_outstanding <= m_avalon.write & ~m_avalon.waitrequest;
-                if (~m_avalon.waitrequest)
-                    current_state <= m_avalon.lock ? READY_LR : READY;
+                ls_output.ready <= ~m_avalon_input.waitrequest;
+                ls_output.data_out <= m_avalon_input.readdata;
+                ls_output.data_valid <= m_avalon_output.read & ~m_avalon_input.waitrequest;
+                m_avalon_output.read <= m_avalon_output.read & m_avalon_input.waitrequest;
+                m_avalon_output.write <= m_avalon_output.write & m_avalon_input.waitrequest;
+                write_outstanding <= m_avalon_output.write & ~m_avalon_input.waitrequest;
+                if (~m_avalon_input.waitrequest)
+                    current_state <= m_avalon_output.lock ? READY_LR : READY;
             end
             REQUESTING_AMO_R : begin //Read for an AMO
                 if (INCLUDE_AMO) begin
-                    ls.data_out <= m_avalon.readdata;
-                    ls.data_valid <= ~m_avalon.waitrequest;
-                    m_avalon.read <= m_avalon.waitrequest;
-                    amo_unit.rmw_valid <= ~m_avalon.waitrequest;
-                    if (~m_avalon.waitrequest)
+                    ls_output.data_out <= m_avalon_input.readdata;
+                    ls_output.data_valid <= ~m_avalon_input.waitrequest;
+                    m_avalon_output.read <= m_avalon_input.waitrequest;
+                    amo_unit_output.rmw_valid <= ~m_avalon_input.waitrequest;
+                    if (~m_avalon_input.waitrequest)
                         current_state <= REQUESTING_AMO_M;
                 end
             end
             REQUESTING_AMO_M : begin //One cycle for computing the AMO write value
                 if (INCLUDE_AMO) begin
-                    ls.data_valid <= 0;
-                    m_avalon.writedata <= amo_unit.rd;
-                    m_avalon.write <= 1;
-                    amo_unit.rmw_valid <= 0;
+                    ls_output.data_valid <= 0;
+                    m_avalon_output.writedata <= amo_unit_input.rd;
+                    m_avalon_output.write <= 1;
+                    amo_unit_output.rmw_valid <= 0;
                     current_state <= REQUESTING_AMO_W;
                 end
             end
             REQUESTING_AMO_W : begin //Write for an AMO
                 if (INCLUDE_AMO) begin
-                    ls.ready <= ~m_avalon.waitrequest;
-                    m_avalon.write <= m_avalon.waitrequest;
-                    m_avalon.lock <= m_avalon.waitrequest;
-                    write_outstanding <= m_avalon.waitrequest;
-                    if (~m_avalon.waitrequest)
+                    ls_output.ready <= ~m_avalon_input.waitrequest;
+                    m_avalon_output.write <= m_avalon_input.waitrequest;
+                    m_avalon_output.lock <= m_avalon_input.waitrequest;
+                    write_outstanding <= m_avalon_input.waitrequest;
+                    if (~m_avalon_input.waitrequest)
                         current_state <= READY;
                 end
             end
             READY_LR : begin //Lock is held; hold for LR_WAIT cycles
                 if (INCLUDE_AMO) begin
-                    ls.ready <= ~ls.new_request | (request_is_sc & ~amo_unit.reservation_valid);
-                    ls.data_out <= {31'b0, ~amo_unit.reservation_valid};
-                    ls.data_valid <= ls.new_request & request_is_sc;
-                    m_avalon.addr[31:2] <= ls.addr[31:2];
-                    m_avalon.byteenable <= ls.be;
-                    m_avalon.writedata <= ls.data_in;
-                    m_avalon.read <= ls.new_request & ls.re & ~request_is_sc;
-                    m_avalon.write <= ls.new_request & (ls.we | (request_is_sc & amo_unit.reservation_valid));
+                    ls_output.ready <= ~ls_input.new_request | (request_is_sc & ~amo_unit_input.reservation_valid);
+                    ls_output.data_out <= {31'b0, ~amo_unit_input.reservation_valid};
+                    ls_output.data_valid <= ls_input.new_request & request_is_sc;
+                    m_avalon_output.addr[31:2] <= ls_input.addr[31:2];
+                    m_avalon_output.byteenable <= ls_input.be;
+                    m_avalon_output.writedata <= ls_input.data_in;
+                    m_avalon_output.read <= ls_input.new_request & ls_input.re & ~request_is_sc;
+                    m_avalon_output.write <= ls_input.new_request & (ls_input.we | (request_is_sc & amo_unit_input.reservation_valid));
                     
-                    write_outstanding <= ls.new_request & (ls.we | amo);
-                    amo_unit.rmw_valid <= 0;
-                    amo_unit.op <= amo_type;
+                    write_outstanding <= ls_input.new_request & (ls_input.we | amo);
+                    amo_unit_output.rmw_valid <= 0;
+                    amo_unit_output.op <= amo_type;
 
-                    if (ls.new_request)
-                        m_avalon.lock <= amo;
+                    if (ls_input.new_request)
+                        m_avalon_output.lock <= amo;
                     else if (32'(lock_counter) == LR_WAIT-1)
-                        m_avalon.lock <= 0;
+                        m_avalon_output.lock <= 0;
 
                     lock_counter <= lock_counter + 1;
 
-                    if (ls.new_request & (~amo | amo_type == AMO_LR_FN5))
+                    if (ls_input.new_request & (~amo | amo_type == AMO_LR_FN5))
                         current_state <= REQUESTING;
-                    else if (ls.new_request & amo & amo_type != AMO_SC_FN5)
+                    else if (ls_input.new_request & amo & amo_type != AMO_SC_FN5)
                         current_state <= REQUESTING_AMO_R;
-                    else if (ls.new_request & amo & amo_type == AMO_SC_FN5 & amo_unit.reservation_valid)
+                    else if (ls_input.new_request & amo & amo_type == AMO_SC_FN5 & amo_unit_input.reservation_valid)
                         current_state <= REQUESTING_SC;
-                    else if (32'(lock_counter) == LR_WAIT-1 | ls.new_request)
+                    else if (32'(lock_counter) == LR_WAIT-1 | ls_input.new_request)
                         current_state <= READY;
                 end
             end
             REQUESTING_SC : begin //Exclusive write
                 if (INCLUDE_AMO) begin
-                    ls.ready <= ~m_avalon.waitrequest;
-                    ls.data_valid <= 0;
-                    m_avalon.write <= m_avalon.waitrequest;
-                    m_avalon.lock <= m_avalon.waitrequest;
-                    write_outstanding <= m_avalon.waitrequest;
-                    if (~m_avalon.waitrequest)
+                    ls_output.ready <= ~m_avalon_input.waitrequest;
+                    ls_output.data_valid <= 0;
+                    m_avalon_output.write <= m_avalon_input.waitrequest;
+                    m_avalon_output.lock <= m_avalon_input.waitrequest;
+                    write_outstanding <= m_avalon_input.waitrequest;
+                    if (~m_avalon_input.waitrequest)
                         current_state <= REQUESTING;
                 end
             end
