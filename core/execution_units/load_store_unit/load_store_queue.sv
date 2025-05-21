@@ -201,17 +201,18 @@ module load_store_queue //ID-based input buffer for Load/Store Unit
     store_queue_addr_fifo (
         .clk(clk),
         .rst(rst),
-        .fifo(sq_addr)
+        .fifo_input(sq_addr_structure_input),
+        .fifo_output(sq_addr_structure_output)
     );
 
-    assign sq_addr.push = lsq.addr_push & ~lsq.addr_data_in.rnw;
-    assign sq_addr.potential_push = sq_addr.push;
-    assign sq_addr.data_in.addr = lsq.addr_data_in.addr;
-    assign sq_addr.data_in.subunit = lsq.addr_data_in.subunit;
-    assign sq_addr.data_in.discard = lsq.addr_data_in.discard;
-    assign sq_addr.pop = store_pop | sq_addr_discard;
+    assign sq_addr_enqueue_output.push = lsq_input.addr_push & ~lsq_input.addr_data_in.rnw;
+    assign sq_addr_enqueue_output.potential_push = sq_addr_structure_input.push;
+    assign sq_addr_enqueue_output.data_in.addr = lsq_input.addr_data_in.addr;
+    assign sq_addr_enqueue_output.data_in.subunit = lsq_input.addr_data_in.subunit;
+    assign sq_addr_enqueue_output.data_in.discard = lsq_input.addr_data_in.discard;
+    assign sq_addr_dequeue_output.pop = store_pop | sq_addr_discard;
 
-    assign sq_addr_discard = sq.valid & (~lq.valid | load_blocked) & (sq_addr.valid ? sq_addr.data_out.discard : lsq.addr_push & ~lsq.addr_data_in.rnw & lsq.addr_data_in.discard);
+    assign sq_addr_discard = sq_ls_input.valid & (~lq_dequeue_input.valid | load_blocked) & (sq_addr_dequeue_input.valid ? sq_addr_dequeue_input.data_out.discard : lsq_input.addr_push & ~lsq_input.addr_data_in.rnw & lsq_input.addr_data_in.discard);
 
 
     ////////////////////////////////////////////////////
@@ -226,15 +227,15 @@ module load_store_queue //ID-based input buffer for Load/Store Unit
             logic load_p2;
             logic load_fp_hold;
 
-            assign load_fp_hold = ~load_p2 & lq.data_out.double;
-            assign load_pop = lsq.load_pop & ~load_fp_hold;
-            assign load_addr_bit_3 = load_fp_hold | lq.data_out.offset[2];
-            assign load_fn3 = lq.data_out.fp ? LS_W_fn3 : lq.data_out.fn3;
+            assign load_fp_hold = ~load_p2 & lq_dequeue_input.data_out.double;
+            assign load_pop = lsq_input.load_pop & ~load_fp_hold;
+            assign load_addr_bit_3 = load_fp_hold | lq_dequeue_input.data_out.offset[2];
+            assign load_fn3 = lq_dequeue_input.data_out.fp ? LS_W_fn3 : lq_dequeue_input.data_out.fn3;
            
             always_comb begin
-                if (~lq.data_out.fp)
+                if (~lq_dequeue_input.data_out.fp)
                     load_type = INT_DONE;
-                else if (~lq.data_out.double)
+                else if (~lq_dequeue_input.data_out.double)
                     load_type = SINGLE_DONE;
                 else if (load_p2)
                     load_type = DOUBLE_DONE;
@@ -245,18 +246,18 @@ module load_store_queue //ID-based input buffer for Load/Store Unit
             always_ff @(posedge clk) begin
                 if (rst)
                     load_p2 <= 0;
-                else if (lsq.load_pop)
+                else if (lsq_input.load_pop)
                     load_p2 <= load_fp_hold;
                 end
         end else begin : gen_no_load_split
             //All loads are single cycle (load only the upper word)
-            assign load_pop = lsq.load_pop;
-            assign load_addr_bit_3 = lq.data_out.offset[2] | lq.data_out.double;
-            assign load_fn3 = lq.data_out.fp ? LS_W_fn3 : lq.data_out.fn3;
+            assign load_pop = lsq_input.load_pop;
+            assign load_addr_bit_3 = lq_dequeue_input.data_out.offset[2] | lq_dequeue_input.data_out.double;
+            assign load_fn3 = lq_dequeue_input.data_out.fp ? LS_W_fn3 : lq_dequeue_input.data_out.fn3;
             always_comb begin
-                if (lq.data_out.double)
+                if (lq_dequeue_input.data_out.double)
                     load_type = DOUBLE_DONE;
-                else if (lq.data_out.fp)
+                else if (lq_dequeue_input.data_out.fp)
                     load_type = SINGLE_DONE;
                 else
                     load_type = INT_DONE;
@@ -272,78 +273,78 @@ module load_store_queue //ID-based input buffer for Load/Store Unit
         logic store_p2;
         logic store_fp_hold;
 
-        assign store_fp_hold = ~store_p2 & sq.data_out.double;
-        assign store_pop = lsq.store_pop & ~store_fp_hold;
-        assign store_addr_bit_3 = sq.data_out.double ? store_p2 : sq.data_out.offset[2]; 
+        assign store_fp_hold = ~store_p2 & sq_ls_input.data_out.double;
+        assign store_pop = lsq_input.store_pop & ~store_fp_hold;
+        assign store_addr_bit_3 = sq_ls_input.data_out.double ? store_p2 : sq_ls_input.data_out.offset[2]; 
 
         always_ff @(posedge clk) begin
             if (rst)
                 store_p2 <= 0;
-            else if (lsq.store_pop)
+            else if (lsq_input.store_pop)
                 store_p2 <= store_fp_hold;
         end
 
         always_comb begin
             store_data = '0;
-            if (sq.data_out.fp & ~sq.data_out.double) //Store single in upper bits
-                store_data[31-:FLEN_F] = sq.data_out.fp_data[FLEN_F-1:0];
+            if (sq_ls_input.data_out.fp & ~sq_ls_input.data_out.double) //Store single in upper bits
+                store_data[31-:FLEN_F] = sq_ls_input.data_out.fp_data[FLEN_F-1:0];
             else if (store_fp_hold) //First cycle of double - store lower bits (may just be 0)
-                store_data = 32'(sq.data_out.fp_data[DOUBLE_MIN_WIDTH-1:0]) << 64-FLEN;
+                store_data = 32'(sq_ls_input.data_out.fp_data[DOUBLE_MIN_WIDTH-1:0]) << 64-FLEN;
             else if (store_p2) //Second cycle of double - store upper bits
-                store_data[31-:DOUBLE_MIN_WIDTH] = sq.data_out.fp_data[FLEN-1-:DOUBLE_MIN_WIDTH];
+                store_data[31-:DOUBLE_MIN_WIDTH] = sq_ls_input.data_out.fp_data[FLEN-1-:DOUBLE_MIN_WIDTH];
             else //Not FP
-                store_data = sq.data_out.data;
+                store_data = sq_ls_input.data_out.data;
         end
     end else begin : gen_no_fpu
         //Plain integer memory operations
-        assign load_pop = lsq.load_pop;
-        assign load_addr_bit_3 = lq.data_out.offset[2];
-        assign load_fn3 = lq.data_out.fn3;
+        assign load_pop = lsq_input.load_pop;
+        assign load_addr_bit_3 = lq_dequeue_input.data_out.offset[2];
+        assign load_fn3 = lq_dequeue_input.data_out.fn3;
         assign load_type = INT_DONE;
-        assign store_pop = lsq.store_pop;
-        assign store_addr_bit_3 = sq.data_out.offset[2];
-        assign store_data = sq.data_out.data;
+        assign store_pop = lsq_input.store_pop;
+        assign store_addr_bit_3 = sq_ls_input.data_out.offset[2];
+        assign store_data = sq_ls_input.data_out.data;
     end
     endgenerate
 
     assign load_blocked = (lq.data_out.store_collision & (lq.data_out.sq_index != sq_oldest));
 
     //Requests are only valid if the TLB has returned the physical address and there was no exception
-    assign lsq.load_valid = lq.valid & ~load_blocked & (lq_addr.valid ? ~lq_addr.data_out.discard : lsq.addr_push & lsq.addr_data_in.rnw & ~lsq.addr_data_in.discard);
-    assign lsq.store_valid = sq.valid & (sq_addr.valid ? ~sq_addr.data_out.discard : lsq.addr_push & ~lsq.addr_data_in.rnw & ~lsq.addr_data_in.discard);
+    assign lsq_output.load_valid = lq_dequeue_input.valid & ~load_blocked & (lq_addr_dequeue_input.valid ? ~lq_addr_dequeue_input.data_out.discard : lsq_input.addr_push & lsq_input.addr_data_in.rnw & ~lsq_input.addr_data_in.discard);
+    assign lsq_output.store_valid = sq_ls_input.valid & (sq_addr_dequeue_input.valid ? ~sq_addr_dequeue_input.data_out.discard : lsq_input.addr_push & ~lsq_input.addr_data_in.rnw & ~lsq_input.addr_data_in.discard);
 
     assign lsq.load_data_out = '{
-        addr : {(lq_addr.valid ? lq_addr.data_out.addr : lsq.addr_data_in.addr), lq.data_out.offset[11:3], load_addr_bit_3, lq.data_out.offset[1:0]},
+        addr : {(lq_addr_dequeue_input.valid ? lq_addr_dequeue_input.data_out.addr : lsq_input.addr_data_in.addr), lq_dequeue_input.data_out.offset[11:3], load_addr_bit_3, lq_dequeue_input.data_out.offset[1:0]},
         load : 1,
         store : 0,
         cache_op : 0,
-        amo : lq.data_out.amo,
-        amo_type : lq.data_out.amo_type,
+        amo : lq_dequeue_input.data_out.amo,
+        amo_type : lq_dequeue_input.data_out.amo_type,
         be : '1,
         fn3 : load_fn3,
-        subunit : lq_addr.valid ? lq_addr.data_out.subunit : lsq.addr_data_in.subunit,
-        data_in : CONFIG.INCLUDE_AMO ? lq.data_out.amo_wdata : 'x,
-        id : lq.data_out.id,
+        subunit : lq_addr_dequeue_input.valid ? lq_addr_dequeue_input.data_out.subunit : lsq_input.addr_data_in.subunit,
+        data_in : CONFIG.INCLUDE_AMO ? lq_dequeue_input.data_out.amo_wdata : 'x,
+        id : lq_dequeue_input.data_out.id,
         fp_op : load_type
     };
 
-    assign lsq.store_data_out = '{
-        addr : {(sq_addr.valid ? sq_addr.data_out.addr : lsq.addr_data_in.addr), sq.data_out.offset[11:3], store_addr_bit_3, sq.data_out.offset[1:0]},
+    assign lsq_output.store_data_out = '{
+        addr : {(sq_addr_dequeue_input.valid ? sq_addr_dequeue_input.data_out.addr : lsq_input.addr_data_in.addr), sq_dequeue_input.data_out.offset[11:3], store_addr_bit_3, sq_ls_input.data_out.offset[1:0]},
         load : 0,
         store : 1,
-        cache_op : sq.data_out.cache_op,
+        cache_op : sq_ls_input.data_out.cache_op,
         amo : 0,
         amo_type : amo_t'('x),
         be : sq.data_out.be,
         fn3 : 'x,
-        subunit : sq_addr.valid ? sq_addr.data_out.subunit : lsq.addr_data_in.subunit,
+        subunit : sq_addr_dequeue_input.valid ? sq_addr_dequeue_input.data_out.subunit : lsq_input.addr_data_in.subunit,
         data_in : store_data,
         id : 'x,
         fp_op : fp_ls_op_t'('x)
     };
 
-    assign lsq.sq_empty = sq.empty;
-    assign lsq.empty = ~lq.valid & sq.empty;
+    assign lsq_output.sq_empty = sq_ls_input.empty;
+    assign lsq_output.empty = ~lq_dequeue_input.valid & sq_ls_input.empty;
 
     ////////////////////////////////////////////////////
     //End of Implementation
