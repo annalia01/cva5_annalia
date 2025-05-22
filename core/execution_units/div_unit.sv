@@ -44,8 +44,13 @@ module div_unit
         input rs_addr_t issue_rs_addr [REGFILE_READ_PORTS],
         input logic [31:0] rf [REGFILE_READ_PORTS],
 
-        unit_issue_interface.unit issue,
-        unit_writeback_interface.unit wb
+        //unit_issue_interface.unit issue,
+        unit_unit_issue_interface_input issue_input,
+        unit_unit_issue_interface_output issue_output,
+        
+        //unit_writeback_interface.unit wb
+        unit_unit_writeback_interface_input wb_input,
+        unit_unit_writeback_interface_output wb_output
     );
     common_instruction_t instruction;//rs1_addr, rs2_addr, fn3, fn7, rd_addr, upper/lower opcode
     logic mult_div_op;
@@ -81,12 +86,22 @@ module div_unit
         div_attributes_t attr;
     } div_fifo_inputs_t;
 
-    unsigned_division_interface #(.DATA_WIDTH(32)) div_core();
+    //unsigned_division_interface #(.DATA_WIDTH(32)) div_core();
+    unsigned_division_interface_requester_output div_core_requester_output;
+    unsigned_division_interface_requester_input div_core_requester_input;
+    unsigned_division_interface_divider_output div_core_divider_output;
+    unsigned_division_interface_divider_input div_core_divider_input;
 
     logic in_progress;
     logic div_done;
 
-    fifo_interface #(.DATA_TYPE(div_fifo_inputs_t)) input_fifo();
+    //fifo_interface #(.DATA_TYPE(div_fifo_inputs_t)) input_fifo();
+    enqueue_fifo_interface_input input_fifo_enqueue_input;
+    enqueue_fifo_interface_output input_fifo_enqueue_output;
+    dequeue_fifo_interface_input input_fifo_dequeue_input;
+    dequeue_fifo_interface_output input_fifo_dequeue_output;
+    structure_fifo_interface_input input_fifo_structure_input;
+    structure_fifo_interface_output input_fifo_structure_output;
 
     function logic [31:0] negate_if  (input logic [31:0] a, logic b);
         return ({32{b}} ^ a) + 32'(b);
@@ -115,7 +130,7 @@ module div_unit
     logic div_op_reuse;
 
     always_ff @(posedge clk) begin
-        if (issue.new_request)
+        if (issue_input.new_request)
             prev_div_rs_addr <= issue_rs_addr[RS1:RS2];
     end
 
@@ -128,7 +143,7 @@ module div_unit
 
     set_clr_reg_with_rst #(.SET_OVER_CLR(1), .WIDTH(1), .RST_VALUE(0)) prev_div_result_valid_m (
         .clk, .rst,
-        .set(issue.new_request & ~((issue_stage.rd_addr == issue_rs_addr[RS1]) | (issue_stage.rd_addr == issue_rs_addr[RS2]))),
+        .set(issue_input.new_request & ~((issue_stage.rd_addr == issue_rs_addr[RS1]) | (issue_stage.rd_addr == issue_rs_addr[RS2]))),
         .clr((instruction_issued_with_rd & div_rs_overwrite) | gc.init_clear), //No instructions will be issued while gc.init_clear is asserted
         .result(prev_div_result_valid)
     );
@@ -170,11 +185,12 @@ module div_unit
     div_input_fifo (
         .clk    (clk),
         .rst    (rst),
-        .fifo   (input_fifo)
+        .fifo_input   (input_fifo_structure_input),
+        .fifo_output (input_fifo_structure_output)
     );
 
     logic div_ready;
-    assign div_ready = (~in_progress) | wb.ack;
+    assign div_ready = (~in_progress) | wb_input.ack;
 
     assign input_fifo.data_in = '{
         unsigned_dividend : unsigned_dividend,
@@ -186,59 +202,60 @@ module div_unit
         attr : '{
             remainder_op : issue_stage.fn3[1],
             negate_result : (issue_stage.fn3[1] ? negate_remainder : (negate_quotient & ~divisor_is_zero)),
-            id : issue.id
+            id : issue_input.id
         }
     };
-    assign input_fifo.push = issue.new_request;
-    assign input_fifo.potential_push = issue.possible_issue;
-    assign issue.ready = ~input_fifo.full | (~in_progress);
-    assign input_fifo.pop = input_fifo.valid & div_ready;
+    assign input_fifo_enqueue_output.push = issue_input.new_request;
+    assign input_fifo_enqueue_output.potential_push = issue_input.possible_issue;
+    assign issue_output.ready = ~input_fifo_enqueue_input.full | (~in_progress);
+    assign input_fifo_dequeue_output.pop = input_fifo_dequeue_input.valid & div_ready;
 
     ////////////////////////////////////////////////////
     //Control Signals
-    assign div_core.start = input_fifo.pop & ~input_fifo.data_out.reuse_result;
-    assign div_done = div_core.done | (input_fifo.pop & input_fifo.data_out.reuse_result);
+    assign div_core_requester_output.start = input_fifo_structure_input.pop & ~input_fifo_dequeue_input.data_out.reuse_result;
+    assign div_done = div_core_requester_input.done | (input_fifo_structure_input.pop & input_fifo_dequeue_input.data_out.reuse_result);
 
     //If more than one cycle, set in_progress so that multiple div.start signals are not sent to the div unit.
     set_clr_reg_with_rst #(.SET_OVER_CLR(1), .WIDTH(1), .RST_VALUE('0))
     in_progress_m (
       .clk, .rst,
-      .set(input_fifo.pop),
-      .clr(wb.ack),
+      .set(input_fifo_structure_input.pop),
+      .clr(wb_input.ack),
       .result(in_progress)
     );
     always_ff @ (posedge clk) begin
-        if (input_fifo.pop)
-            wb_attr <= input_fifo.data_out.attr;
+        if (input_fifo_structure_input.pop)
+            wb_attr <= input_fifo_dequeue_input.data_out.attr;
     end
 
     ////////////////////////////////////////////////////
     //Div core
-    assign div_core.dividend = input_fifo.data_out.unsigned_dividend;
-    assign div_core.divisor = input_fifo.data_out.unsigned_divisor;
-    assign div_core.dividend_CLZ = input_fifo.data_out.dividend_CLZ;
-    assign div_core.divisor_CLZ = input_fifo.data_out.divisor_CLZ;
-    assign div_core.divisor_is_zero = input_fifo.data_out.divisor_is_zero;
+    assign div_core_requester_output.dividend = input_fifo_dequeue_input.data_out.unsigned_dividend;
+    assign div_core_requester_output.divisor = input_fifo_dequeue_input.data_out.unsigned_divisor;
+    assign div_core_requester_output.dividend_CLZ = input_fifo_dequeue_input.data_out.dividend_CLZ;
+    assign div_core_requester_output.divisor_CLZ = input_fifo_dequeue_input.data_out.divisor_CLZ;
+    assign div_core_requester_output.divisor_is_zero = input_fifo_dequeue_input.data_out.divisor_is_zero;
     
     div_core #(.DIV_WIDTH(32)) 
     divider_block (
         .clk(clk),
         .rst(rst),
-        .div(div_core)
+        .div_input(div_core_divider_input),
+        .div_output(div_core_divider_output)
     );
 
     ////////////////////////////////////////////////////
     //Output
-    assign wb.rd = negate_if (wb_attr.remainder_op ? div_core.remainder : div_core.quotient, wb_attr.negate_result);
+    assign wb_output.rd = negate_if (wb_attr.remainder_op ? div_core_requester_input.remainder : div_core_requester_input.quotient, wb_attr.negate_result);
 
     always_ff @ (posedge clk) begin
         if (rst)
-            wb.done <= 0;
+            wb_output.done <= 0;
         else
-            wb.done <= (wb.done & ~wb.ack) | div_done;
+            wb_output.done <= (wb_output.done & ~wb_input.ack) | div_done;
     end
 
-    assign wb.id = wb_attr.id;
+    assign wb_output.id = wb_attr.id;
     ////////////////////////////////////////////////////
     //Assertions
 
