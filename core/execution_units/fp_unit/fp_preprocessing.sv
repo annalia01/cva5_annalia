@@ -34,8 +34,9 @@ module fp_preprocessing
     (
         input logic clk,
         input logic rst,
-        unit_issue_interface.decode unit_issue[FP_NUM_UNITS-1:0],
-
+        //unit_issue_interface.decode unit_issue[FP_NUM_UNITS-1:0],
+        decode_unit_issue_interface_input unit_issue_input[FP_NUM_UNITS-1:0],
+        decode_unit_issue_interface_output unit_issue_output[FP_NUM_UNITS-1:0],
         //Unit Inputs
         input fp_preprocessing_packet_t pkt,
 
@@ -64,9 +65,9 @@ module fp_preprocessing
 
     //Unpack interface array
     generate for (genvar i = 0; i < FP_NUM_UNITS; i++) begin : gen_interface_unpack
-        assign unit_ready[i] = unit_issue[i].ready;
-        assign unit_issue[i].new_request = issue_to[i];
-        assign unit_issue[i].id = id_r;
+        assign unit_ready[i] = unit_issue_input[i].ready;
+        assign unit_issue_output[i].new_request = issue_to[i];
+        assign unit_issue_outputi].id = id_r;
     end endgenerate
 
     assign stage2_advance = stage2_valid & |(unit_ready & target_unit);
