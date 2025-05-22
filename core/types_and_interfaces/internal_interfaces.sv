@@ -418,7 +418,7 @@ typedef struct packed {
     logic [DATA_WIDTH-1:0] remainder;
     logic [DATA_WIDTH-1:0] quotient;
     logic done;
-} unsigned_division_interface_divider_input;
+} unsigned_division_interface_divider_output;
 
 typedef struct packed {
     logic [DATA_WIDTH-1:0] dividend;
@@ -427,7 +427,7 @@ typedef struct packed {
     logic [$clog2(DATA_WIDTH)-1:0] divisor_CLZ;
     logic divisor_is_zero;
     logic start;
-} unsigned_division_interface_divider_output;
+} unsigned_division_interface_divider_input;
 
 typedef struct packed {
     logic [DATA_WIDTH-1:0] remainder;
