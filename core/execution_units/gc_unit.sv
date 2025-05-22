@@ -48,14 +48,19 @@ module gc_unit
         input logic [31:0] constant_alu,
         input logic [31:0] rf [REGFILE_READ_PORTS],
 
-        unit_issue_interface.unit issue,
+        //unit_issue_interface.unit issue,
+        unit_unit_issue_interface_input issue_input,
+        unit_unit_issue_interface_output issue_output,
 
         //Branch miss predict
         input logic branch_flush,
 
         //Exception
-        exception_interface.unit local_gc_exception,
-        exception_interface.econtrol exception [NUM_EXCEPTION_SOURCES],
+        //exception_interface.unit local_gc_exception,
+        unit_exception_output local_gc_exception_output,
+        
+        //exception_interface.econtrol exception [NUM_EXCEPTION_SOURCES],
+        econtrol_exception_interface_input exception_input[NUM_EXCEPTION_SOURCES],
         input logic [31:0] exception_target_pc,
 
         output logic mret,
@@ -199,15 +204,15 @@ module gc_unit
             sret <= 0;
         end
         else begin
-            is_ifence_r <= issue.new_request & is_ifence & ~new_exception;
-            is_sfence_r <= issue.new_request & is_sfence & ~new_exception;
-            mret <= issue.new_request & is_mret & ~new_exception;
-            sret <= issue.new_request & is_sret & ~new_exception;
+            is_ifence_r <= issue_input.new_request & is_ifence & ~new_exception;
+            is_sfence_r <= issue_input.new_request & is_sfence & ~new_exception;
+            mret <= issue_input.new_request & is_mret & ~new_exception;
+            sret <= issue_input.new_request & is_sret & ~new_exception;
         end  
     end
 
     always_ff @(posedge clk) begin
-        if (issue.new_request) begin
+        if (issue_input.new_request) begin
             trivial_sfence_r <= trivial_sfence;
             asid_sfence_r <= asid_sfence;
             sfence_addr_r <= rf[RS1];
@@ -223,7 +228,7 @@ module gc_unit
     generate if (CONFIG.MODES != BARE) begin : gen_gc_exception
         always_comb begin
             new_exception = 0;
-            if (issue.new_request) begin
+            if (issue_input.new_request) begin
                 if (current_privilege == USER_PRIVILEGE)
                     new_exception = is_sfence | is_sret | is_mret;
                 else if (current_privilege == SUPERVISOR_PRIVILEGE)
@@ -233,16 +238,16 @@ module gc_unit
 
         always_ff @(posedge clk) begin
             if (rst)
-                local_gc_exception.valid <= 0;
+                local_gc_exception_output.valid <= 0;
             else
-                local_gc_exception.valid <= new_exception;
+                local_gc_exception_output.valid <= new_exception;
         end
 
-        assign local_gc_exception.possible = 0; //Not needed because appears on first cycle
-        assign local_gc_exception.code = ILLEGAL_INST;
-        assign local_gc_exception.tval = issue_stage.instruction_r;
-        assign local_gc_exception.pc = issue_stage.pc_r;
-        assign local_gc_exception.discard = 0;
+        assign local_gc_exception_output.possible = 0; //Not needed because appears on first cycle
+        assign local_gc_exception_output.code = ILLEGAL_INST;
+        assign local_gc_exception_output.tval = issue_stage.instruction_r;
+        assign local_gc_exception_output.pc = issue_stage.pc_r;
+        assign local_gc_exception_output.discard = 0;
     end
     endgenerate
 
@@ -286,7 +291,7 @@ module gc_unit
             PRE_CLEAR_STATE : next_state = INIT_CLEAR_STATE;
             INIT_CLEAR_STATE : if (init_clear_done) next_state = IDLE_STATE;
             IDLE_STATE : begin
-                if ((issue.new_request & ~is_wfi & ~new_exception) | gc.exception.valid | csr_frontend_flush)
+                if ((issue_input.new_request & ~is_wfi & ~new_exception) | gc.exception.valid | csr_frontend_flush)
                     next_state = PRE_ISSUE_FLUSH;
                 else if (interrupt_pending)
                     next_state = WAIT_INTERRUPT;
@@ -346,7 +351,7 @@ module gc_unit
 
     //Separated out because possible exceptions from CSR must still stall even without M
     generate for (genvar i = 0; i < NUM_EXCEPTION_SOURCES; i++) begin : gen_possible_exceptions
-        assign exception_possible[i] = exception[i].possible;
+        assign exception_possible[i] = exception_input[i].possible;
     end endgenerate
     assign possible_exception = |exception_possible;
     assign gc.exception.possible = possible_exception;
@@ -361,11 +366,11 @@ generate if (CONFIG.MODES != BARE) begin : gen_gc_m_mode
     logic [$clog2(NUM_EXCEPTION_SOURCES > 1 ? NUM_EXCEPTION_SOURCES : 2)-1:0] exception_source;
     
     for (genvar i = 0; i < NUM_EXCEPTION_SOURCES; i++) begin : gen_unpacking
-        assign exception_valid[i] = exception[i].valid;
-        assign exception_code[i] = exception[i].code;
-        assign exception_tval[i] = exception[i].tval;
-        assign exception_discard[i] = exception[i].discard;
-        assign exception_pc[i] = exception[i].pc;
+        assign exception_valid[i] = exception_input[i].valid;
+        assign exception_code[i] = exception_input[i].code;
+        assign exception_tval[i] = exception_input[i].tval;
+        assign exception_discard[i] = exception_input[i].discard;
+        assign exception_pc[i] = exception_input[i].pc;
     end
 
     one_hot_to_integer #(.C_WIDTH(NUM_EXCEPTION_SOURCES)) src_mux (
@@ -427,7 +432,7 @@ end endgenerate
     //CSR reads are passed through the Load-Store unit
     //A CSR write is only committed once it is the oldest instruction in the pipeline
     //while processing a csr operation, gc_issue_hold prevents further instructions from being issued
-    assign issue.ready = 1;
+    assign issue_output.ready = 1;
 
     ////////////////////////////////////////////////////
     //End of Implementation
