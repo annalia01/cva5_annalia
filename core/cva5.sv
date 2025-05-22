@@ -649,9 +649,11 @@ module cva5
         mmu d_mmu (
             .clk (clk),
             .rst (rst),
-            .mmu (dmmu),
+            .mmu_input (dmmu_mmu_input),
+            .mmu_output (dmmu_mmu_output),
             .abort_request (1'b0),
-            .mem (dmmu_mem)
+            .mem_input (dmmu_mem_input_master_ro),
+            .mem_output (dmmu_mem_output_master_ro)
         );
     end
     endgenerate
@@ -668,11 +670,13 @@ module cva5
             .unit_needed (unit_needed[CSR_ID]),
             .uses_rs (unit_uses_rs[CSR_ID]),
             .uses_rd (unit_uses_rd[CSR_ID]),
-            .rf (rf_issue.data),
+            .rf (rf_issue_issue_input.data),
             .instruction_issued (instruction_issued),
             .fp_instruction_issued_with_rd (fp_instruction_issued_with_rd),
-            .issue (unit_issue[CSR_ID]),
-            .wb (unit_wb[CSR_ID]),
+            .issue_input (unit_issue_unit_input[CSR_ID]),
+            .issue_output (unit_issue_unit_output[CSR_ID]),
+            .wb_input (unit_wb_unit_input[CSR_ID]),
+            .wb_output (unit_wb_unit_output[CSR_ID]),
             .current_privilege(current_privilege),
             .menvcfg(menvcfg),
             .senvcfg(senvcfg),
@@ -684,15 +688,15 @@ module cva5
             .instruction_translation_on(instruction_translation_on),
             .data_translation_on(data_translation_on),
             .asid(asid),
-            .immu(immu),
-            .dmmu(dmmu),
+            .immu_output(immu_csr_output),
+            .dmmu_output(dmmu_csr_output),
             .exception_pkt(gc.exception),
             .exception_target_pc (exception_target_pc),
             .mret(mret),
             .sret(sret),
             .mepc(mepc),
             .sepc(sepc),
-            .exception(exception[CSR_EXCEPTION]),
+            .exception_output(exception_output[CSR_EXCEPTION]),
             .retire_ids(retire_ids),
             .mtime(mtime),
             .s_interrupt(s_interrupt),
@@ -712,11 +716,12 @@ module cva5
         .uses_rd (unit_uses_rd[GC_ID]),
         .instruction_issued (instruction_issued),
         .constant_alu (constant_alu),
-        .rf (rf_issue.data),
-        .issue (unit_issue[GC_ID]),
+        .rf (rf_issue_issue_input.data),
+        .issue_input (unit_issue_unit_input[GC_ID]),
+        .issue_output (unit_issue_unit_output[GC_ID]),
         .branch_flush (branch_flush),
-        .local_gc_exception (exception[GC_EXCEPTION]),
-        .exception (exception),
+        .local_gc_exception_output (exception_output[GC_EXCEPTION]),
+        .exception_input (exception_input),
         .exception_target_pc (exception_target_pc),
         .csr_frontend_flush (csr_frontend_flush),
         .current_privilege (current_privilege),
@@ -743,9 +748,11 @@ module cva5
             .unit_needed (unit_needed[MUL_ID]),
             .uses_rs (unit_uses_rs[MUL_ID]),
             .uses_rd (unit_uses_rd[MUL_ID]),
-            .rf (rf_issue.data),
-            .issue (unit_issue[MUL_ID]),
-            .wb (unit_wb[MUL_ID])
+            .rf (rf_issue_issue_input.data),
+            .issue_input (unit_issue_unit_input[MUL_ID]),
+            .issue_output (unit_issue_unit_output[MUL_ID]),
+            .wb_input (unit_wb_unit_input[MUL_ID]),
+            .wb_output (unit_wb_unit_output[MUL_ID])
         );
     end endgenerate
 
@@ -762,9 +769,11 @@ module cva5
             .unit_needed (unit_needed[DIV_ID]),
             .uses_rs (unit_uses_rs[DIV_ID]),
             .uses_rd (unit_uses_rd[DIV_ID]),
-            .rf (rf_issue.data),
-            .issue (unit_issue[DIV_ID]),
-            .wb (unit_wb[DIV_ID])
+            .rf (rf_issue_issue_input.data),
+            .issue_input (unit_issue_unit_input[DIV_ID]),
+            .issue_output (unit_issue_unit_output[DIV_ID]),
+            .wb_input (unit_wb_unit_input[DIV_ID]),
+            .wb_output (unit_wb_unit_output[DIV_ID])
         );
     end endgenerate
 
@@ -779,9 +788,11 @@ module cva5
             .uses_rd (unit_uses_rd[CUSTOM_ID]),
             .issue_stage (issue),
             .issue_stage_ready (issue_stage_ready),
-            .rf (rf_issue.data),
-            .issue (unit_issue[CUSTOM_ID]),
-            .wb (unit_wb[CUSTOM_ID])
+            .rf (rf_issue_issue_input.data),
+            .issue_input (unit_issue_unit_input[CUSTOM_ID]),
+            .issue_output (unit_issue_unit_output[CUSTOM_ID]),
+            .wb_input (unit_wb_unit_input[CUSTOM_ID]),
+            .wb_output (unit_wb_unit_output[CUSTOM_ID])
         );
     end endgenerate
 
@@ -794,7 +805,8 @@ module cva5
         )
         writeback_block (
             .wb_packet (wb_packet[i]),
-            .unit_wb (unit_wb)
+            .unit_wb_input (unit_wb_wb_input),
+            .unit_wb_output (unit_wb_wb_output)
         );
     end endgenerate
 
@@ -803,7 +815,8 @@ module cva5
     generate if (CONFIG.INCLUDE_UNIT.FPU) begin : gen_fpu
 
         fp_writeback fp_writeback_block (
-            .unit_wb (fp_unit_wb),
+            .unit_wb_input (fp_unit_wb_wb_input),
+            .unit_wb_output (fp_unit_wb_wb_output),
             .wb_packet (fp_wb_packet)
         );
 
