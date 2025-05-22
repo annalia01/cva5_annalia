@@ -27,7 +27,9 @@ module div_core
     (
         input logic clk,
         input logic rst,
-        unsigned_division_interface.divider div
+        //unsigned_division_interface.divider div
+        unsigned_division_interface_divider_input div_input,
+        unsigned_division_interface_divider_output div_output,
     );
     
     localparam CLZ_W = $clog2(DIV_WIDTH);
@@ -51,37 +53,37 @@ module div_core
     ////////////////////////////////////////////////////
     //Implementation
     //First cycle
-    assign {divisor_greater_than_dividend, CLZ_delta} = div.divisor_CLZ - div.dividend_CLZ;
+ assign {divisor_greater_than_dividend, CLZ_delta} = div_input.divisor_CLZ - div_input.dividend_CLZ;
 
     always_ff @ (posedge clk) begin
         if (running)
             shifted_divisor <= {2'b0, shifted_divisor[DIV_WIDTH-1:2]};
         else
-            shifted_divisor <= div.divisor << {CLZ_delta[CLZ_W-1:1], 1'b0};//Rounding down when CLZ_delta is odd
+            shifted_divisor <= div_input.divisor << {CLZ_delta[CLZ_W-1:1], 1'b0};//Rounding down when CLZ_delta is odd
     end
 
     //Subtractions
     logic sub2x_toss;
-    assign {sub_2x_overflow, sub2x_toss, sub_2x} = {1'b0, div.remainder} - {shifted_divisor, 1'b0};
+ assign {sub_2x_overflow, sub2x_toss, sub_2x} = {1'b0, div_output.remainder} - {shifted_divisor, 1'b0};
     assign {sub_1x_overflow, sub_1x} = sub_2x_overflow ? {sub2x_toss, sub_2x} + {1'b0, shifted_divisor} : {sub2x_toss, sub_2x} - {1'b0, shifted_divisor};
 
     assign new_quotient_bits[1] = ~sub_2x_overflow;
     assign new_quotient_bits[0] = ~sub_1x_overflow;
 
     always_ff @ (posedge clk) begin
-        if (div.start)
-            div.quotient <= '0;
+     if (div_input.start)
+            div_output.quotient <= '0;
         else if (running) 
-            div.quotient <= {div.quotient[(DIV_WIDTH-3):0], new_quotient_bits};
+         div_output.quotient <= {div_output.quotient[(DIV_WIDTH-3):0], new_quotient_bits};
     end
 
     //Remainder mux, when quotient bits are zero value is held
     always_ff @ (posedge clk) begin
-        if (div.start | (running & |new_quotient_bits)) begin  //enable: on div.start for init and so long as we are in the running state and the quotient pair is not zero
+     if (div_input.start | (running & |new_quotient_bits)) begin  //enable: on div.start for init and so long as we are in the running state and the quotient pair is not zero
             case ({~running, sub_1x_overflow})
-                0 : div.remainder <= sub_1x;
-                1 : div.remainder <= sub_2x;
-                default : div.remainder <= div.dividend;//Overloading the quotient zero case to fit the initial loading of the dividend in
+                0 : div_output.remainder <= sub_1x;
+                1 : div_output.remainder <= sub_2x;
+                default : div_output.remainder <= div_input.dividend;//Overloading the quotient zero case to fit the initial loading of the dividend in
             endcase
         end
     end
@@ -99,10 +101,10 @@ module div_core
         if (rst)
             running <= 0;
         else
-            running <= (running & ~terminate) | (div.start & ~divisor_greater_than_dividend);
+         running <= (running & ~terminate) | (div_input.start & ~divisor_greater_than_dividend);
     end
     
-    assign div.done = (running & terminate) | (div.start & divisor_greater_than_dividend);
+ assign div_output.done = (running & terminate) | (div_input.start & divisor_greater_than_dividend);
 
     ////////////////////////////////////////////////////
     //End of Implementation
