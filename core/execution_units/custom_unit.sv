@@ -40,8 +40,13 @@ module custom_unit
         input logic issue_stage_ready,
         input logic [31:0] rf [REGFILE_READ_PORTS],
 
-        unit_issue_interface.unit issue,
-        unit_writeback_interface.unit wb
+        //unit_issue_interface.unit issue,
+        unit_unit_issue_interface_input issue_input,
+        unit_unit_issue_interface_output issue_output,
+        
+        //unit_writeback_interface.unit wb
+        unit_unit_writeback_interface_input wb_input,
+        unit_unit_writeback_interface_output wb_output
     );
     common_instruction_t instruction;//rs1_addr, rs2_addr, fn3, fn7, rd_addr, upper/lower opcode
     logic [31:0] result;
@@ -67,27 +72,27 @@ module custom_unit
     end
     ////////////////////////////////////////////////////
     //Issue
-    assign issue.ready = ~wb.done;
+    assign issue_output.ready = ~wb_output.done;
 
     always_ff @(posedge clk) begin
-        if (issue.new_request)
-            id <=  issue.id;
+        if (issue_input.new_request)
+            id <=  issue_input.id;
     end
 
     always_ff @(posedge clk) begin
-        if (issue.new_request)
+        if (issue_input.new_request)
            result <= rf[RS1] + rf[RS2];
     end
 
     ////////////////////////////////////////////////////
     //Write-back
-    assign wb.rd = result;
+    assign wb_output.rd = result;
 
     always_ff @ (posedge clk) begin
         if (rst)
-            wb.done <= 0;
+            wb_output.done <= 0;
         else
-            wb.done <= (wb.done & ~wb.ack) | issue.new_request;
+            wb_output.done <= (wb_output.done & ~wb_input.ack) | issue_input.new_request;
     end
-    assign wb.id = id;
+    assign wb_output.id = id;
 endmodule
