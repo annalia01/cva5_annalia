@@ -47,9 +47,17 @@
         input logic[31:0] int_rf[REGFILE_READ_PORTS],
         input logic[FLEN-1:0] fp_rf[3],
 
-        unit_issue_interface.unit issue,
-        unit_writeback_interface.unit int_wb,
-        unit_writeback_interface.unit fp_wb,
+        //unit_issue_interface.unit issue,
+        unit_unit_issue_interface_input issue_input,
+        unit_unit_issue_interface_output issue_output,
+     
+        //unit_writeback_interface.unit int_wb,
+        unit_unit_writeback_interface_input int_wb_input,
+        unit_unit_writeback_interface_output int_wb_output,
+     
+        //unit_writeback_interface.unit fp_wb,
+        unit_unit_writeback_interface_input fp_wb_input,
+        unit_unit_writeback_interface_output fp_wb_output,
         output fflags_t fflags
     );
 
@@ -60,8 +68,20 @@
     fp_wb2int_misc_inputs_t wb2int_inputs;
     fflags_t int_fflags;
     fflags_t fp_fflags;
-    unit_issue_interface intermediate_issue[4:0](); //FMA, FDIV, FSQRT, WB2FP, WB2INT
-    fp_intermediate_wb_interface intermediate_unit_wb[3:0](); //FMADD, FMUL, FDIV/FSQRT, WB2FP
+    //unit_issue_interface intermediate_issue[4:0](); //FMA, FDIV, FSQRT, WB2FP, WB2INT
+    unit_unit_issue_interface_input intermediate_issue_unit_input;
+    unit_unit_issue_interface_output intermediate_issue_unit_output;
+    unit_unit_writeback_interface_input intermediate_issue_writeback_input;
+    unit_unit_writeback_interface_output intermediate_issue_writeback_output;
+    decode_unit_issue_interface_input intermediate_issue_decode_input,
+    decode_unit_issue_interface_output intermediate_issue_decode_output,
+  
+    //fp_intermediate_wb_interface intermediate_unit_wb[3:0](); //FMADD, FMUL, FDIV/FSQRT, WB2FP
+    fp_intermediate_wb_interface_unit_input intermediate_unit_wb_unit_input;
+    fp_intermediate_wb_interface_unit_output intermediate_unit_wb_unit_output;
+    fp_intermediate_wb_interface_wb_input intermediate_unit_wb_wb_input;
+    fp_intermediate_wb_interface_wb_output intermediate_unit_wb_wb_output;
+  
     ////////////////////////////////////////////////////
     //Implementation
     //This unit instantiates the internal FPU components and connects them
@@ -208,9 +228,10 @@
     end
 
     fp_preprocessing #(.CONFIG(CONFIG), .FP_NUM_UNITS(5)) fp_preprocessing_inst (
-        .unit_issue(intermediate_issue),
+     .unit_issue_input( intermediate_issue_decode_input),
+     .unit_issue_output( intermediate_issue_decode_output),
         .pkt(pkt),
-        .ready(issue.ready),
+        .ready(issue_input.ready),
         .madd_args(madd_inputs),
         .div_args(div_inputs),
         .sqrt_args(sqrt_inputs),
