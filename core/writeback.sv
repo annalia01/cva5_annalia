@@ -32,7 +32,9 @@ module writeback
 
     (
         //Unit writeback
-        unit_writeback_interface.wb unit_wb[MAX_NUM_UNITS],
+        //unit_writeback_interface.wb unit_wb[MAX_NUM_UNITS],
+        wb_unit_writeback_interface_input unit_wb_input[MAX_NUM_UNITS],
+        wb_unit_writeback_interface_output unit_wb_output[MAX_NUM_UNITS],
         //WB output
         output wb_packet_t wb_packet
     );
@@ -50,10 +52,10 @@ module writeback
     //Implementation
     //Re-assigning interface inputs to array types so that they can be dynamically indexed
     generate for (genvar i = 0; i < NUM_WB_UNITS; i++) begin : gen_wb_unit_unpacking
-        assign unit_instruction_id[i] = unit_wb[WB_INDEX[i]].id;
-        assign unit_done[i] = unit_wb[WB_INDEX[i]].done;
-        assign unit_rd[i] = unit_wb[WB_INDEX[i]].rd;
-        assign unit_wb[WB_INDEX[i]].ack = unit_ack[i];
+        assign unit_instruction_id[i] = unit_wb_input[WB_INDEX[i]].id;
+        assign unit_done[i] = unit_wb_input[WB_INDEX[i]].done;
+        assign unit_rd[i] = unit_wb_input[WB_INDEX[i]].rd;
+        assign unit_wb_output[WB_INDEX[i]].ack = unit_ack[i];
     end endgenerate
 
     ////////////////////////////////////////////////////
