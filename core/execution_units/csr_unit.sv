@@ -49,9 +49,14 @@ module csr_unit
         input logic fp_instruction_issued_with_rd,
 
         //Unit Interfaces
-        unit_issue_interface.unit issue,
-        unit_writeback_interface.unit wb,
-
+        //unit_issue_interface.unit issue,
+        unit_unit_issue_interface_input issue_input,
+        unit_unit_issue_interface_output issue_output,
+        
+        //unit_writeback_interface.unit wb,
+        unit_unit_writeback_interface_input wb_input,
+        unit_unit_writeback_interface_output wb_output,
+        
         //Privilege
         output logic [1:0] current_privilege,
         output envcfg_t menvcfg,
@@ -72,9 +77,12 @@ module csr_unit
         output logic [ASIDLEN-1:0] asid,
 
         //MMUs
-        mmu_interface.csr immu,
-        mmu_interface.csr dmmu,
-
+        //mmu_interface.csr immu,
+        csr_mmu_interface_output immu_output,
+        
+        //mmu_interface.csr dmmu,
+        csr_mmu_interface_output dmmu_output,
+        
         //CSR exception interface
         input exception_packet_t exception_pkt,
         output logic [31:0] exception_target_pc,
@@ -86,7 +94,8 @@ module csr_unit
         output logic [31:0] sepc,
         
         //Exception generation
-        exception_interface.unit exception,
+        //exception_interface.unit exception,
+        unit_exception_output exception_output,
 
         //Retire
         input id_t retire_ids [RETIRE_PORTS],
@@ -197,11 +206,11 @@ module csr_unit
         if (rst)
             busy <= 0;
         else
-            busy <= (busy & ~wb.ack) | issue.new_request;
+            busy <= (busy & ~wb_input.ack) | issue_input.new_request;
     end
 
     always_ff @(posedge clk) begin
-        if (issue.new_request)
+        if (issue_input.new_request)
             csr_inputs_r <= csr_inputs;
     end
 
@@ -209,11 +218,11 @@ module csr_unit
         if (rst)
             commit_in_progress <= 0;
         else
-            commit_in_progress <= (commit_in_progress & ~issue.new_request) | commit;
+            commit_in_progress <= (commit_in_progress & ~issue_input.new_request) | commit;
     end
 
     //Waits until CSR instruction is the oldest issued instruction
-    assign commit = (retire_ids[0] == wb.id) & busy & (~commit_in_progress);
+    assign commit = (retire_ids[0] == wb_output.id) & busy & (~commit_in_progress);
 
 
     ////////////////////////////////////////////////////
@@ -221,17 +230,17 @@ module csr_unit
 
     always_ff @(posedge clk) begin
         if (rst)
-            wb.done <= 0;
+            wb_output.done <= 0;
         else
-            wb.done <= (wb.done & ~wb.ack) | commit;
+            wb_output.done <= (wb_output.done & ~wb_input.ack) | commit;
     end
 
     always_ff @(posedge clk) begin
-        if (issue.new_request)
-            wb.id <= issue.id;
+        if (issue_input.new_request)
+            wb_output.id <= issue_input.id;
     end
 
-    assign wb.rd = selected_csr_r;
+    assign wb_output.rd = selected_csr_r;
 
     ////////////////////////////////////////////////////
     //Shared logic 
@@ -738,14 +747,14 @@ endgenerate
 generate if (CONFIG.MODES == MSU) begin : gen_csr_s_mode
     ////////////////////////////////////////////////////
     //MMU interface
-    assign immu.mxr = mstatus.mxr;
-    assign dmmu.mxr = mstatus.mxr;
-    assign immu.sum = mstatus.sum;
-    assign dmmu.sum = mstatus.sum;
-    assign immu.privilege = privilege_level;
-    assign dmmu.privilege = mstatus.mprv ? privilege_t'(mstatus.mpp) : privilege_level;
-    assign immu.satp_ppn = satp.ppn;
-    assign dmmu.satp_ppn = satp.ppn;
+    assign immu_output.mxr = mstatus.mxr;
+    assign dmmu_output.mxr = mstatus.mxr;
+    assign immu_output.sum = mstatus.sum;
+    assign dmmu_output.sum = mstatus.sum;
+    assign immu_output.privilege = privilege_level;
+    assign dmmu_output.privilege = mstatus.mprv ? privilege_t'(mstatus.mpp) : privilege_level;
+    assign immu_output.satp_ppn = satp.ppn;
+    assign dmmu_output.satp_ppn = satp.ppn;
     ////////////////////////////////////////////////////
 
     ////////////////////////////////////////////////////
@@ -949,7 +958,7 @@ end endgenerate
     //GC Connections
     logic will_flush;
     always_ff @(posedge clk) begin
-        if (issue.new_request)
+        if (issue_input.new_request)
             will_flush <= CONFIG.MODES == MSU & csr_inputs.writes & csr_inputs.addr inside {SATP, MSTATUS, SSTATUS};
         csr_frontend_flush <= commit & will_flush;
     end
@@ -1000,21 +1009,21 @@ generate if (CONFIG.MODES != BARE) begin : gen_csr_exceptions
     always_ff @(posedge clk) begin
         if (rst)
             illegal_instruction <= 0;
-        else if (issue.new_request)
+        else if (issue_input.new_request)
             illegal_instruction <= ~legal_access;
     end
 
     always_ff @(posedge clk) begin
         if (rst)
-            exception.valid <= 0;
+            exception_output.valid <= 0;
         else
-            exception.valid <= commit & illegal_instruction;
+            exception_output.valid <= commit & illegal_instruction;
     end
 
-    assign exception.code = ILLEGAL_INST;
-    assign exception.pc = issue_stage.pc_r;
-    assign exception.tval = issue_stage.instruction_r;
-    assign exception.discard = |issue_stage.instruction_r[11:7]; //Only discard if rd != x0
+    assign exception_output.code = ILLEGAL_INST;
+    assign exception_output.pc = issue_stage.pc_r;
+    assign exception_output.tval = issue_stage.instruction_r;
+    assign exception_output.discard = |issue_stage.instruction_r[11:7]; //Only discard if rd != x0
 
 end
 endgenerate
@@ -1025,10 +1034,10 @@ endgenerate
     //can be raised and detected before another instruction is issued
     logic stall_for_interrupt;
     always_ff @(posedge clk) begin
-        stall_for_interrupt <= wb.done & wb.ack & csr_inputs_r.writes & (mwrite_en(MIP) | mwrite_en(MIE) | mwrite_en(MSTATUS) | mwrite_en(MIDELEG) | swrite_en(SIP) | swrite_en(SIE) | swrite_en(SSTATUS));
+        stall_for_interrupt <= wb_output.done & wb_input.ack & csr_inputs_r.writes & (mwrite_en(MIP) | mwrite_en(MIE) | mwrite_en(MSTATUS) | mwrite_en(MIDELEG) | swrite_en(SIP) | swrite_en(SIE) | swrite_en(SSTATUS));
     end
 
-    assign exception.possible = busy | exception.valid | stall_for_interrupt; //Block future instructions
+    assign exception_output.possible = busy | exception_output.valid | stall_for_interrupt; //Block future instructions
 
     ////////////////////////////////////////////////////
     //CSR mux
