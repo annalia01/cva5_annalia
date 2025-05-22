@@ -40,8 +40,13 @@ module mul_unit
         input logic issue_stage_ready,
         input logic [31:0] rf [REGFILE_READ_PORTS],
 
-        unit_issue_interface.unit issue,
-        unit_writeback_interface.unit wb
+        //unit_issue_interface.unit issue,
+        unit_unit_issue_interface_input issue_input,
+        unit_unit_issue_interface_output issue_output,
+        
+        //unit_writeback_interface.unit wb
+         unit_unit_writeback_interface_input wb_input,
+         unit_unit_writeback_interface_output wb_output
     );
     common_instruction_t instruction;//rs1_addr, rs2_addr, fn3, fn7, rd_addr, upper/lower opcode
     
@@ -83,9 +88,9 @@ module mul_unit
     assign rs2_ext = signed'({rs2_is_signed & rf[RS2][31], rf[RS2]});
 
     //Pipeline advancement control signals
-    assign issue.ready = stage1_advance;
+    assign issue_output.ready = stage1_advance;
     assign stage1_advance = ~valid[0] | stage2_advance;
-    assign stage2_advance = ~valid[1] | wb.ack;
+    assign stage2_advance = ~valid[1] | wb_input.ack;
 
     //Input and output registered Multiply
     always_ff @ (posedge clk) begin
@@ -102,7 +107,7 @@ module mul_unit
     always_ff @ (posedge clk) begin
         if (stage1_advance) begin
             mulh[0] <= is_mulhx;
-            id[0] <= issue.id;
+            id[0] <= issue_input.id;
         end
         if (stage2_advance) begin
             mulh[1] <= mulh[0];
@@ -115,16 +120,16 @@ module mul_unit
         if (rst)
             valid <= '{default: 0};
         else begin
-            valid[0] <= stage1_advance ? issue.new_request : valid[0];
+            valid[0] <= stage1_advance ? issue_input.new_request : valid[0];
             valid[1] <= stage2_advance ? valid[0] : valid[1];
         end
     end
 
     //WB interface
     ////////////////////////////////////////////////////
-    assign wb.rd = mulh[1] ? result[63:32] : result[31:0];
-    assign wb.done = valid[1];
-    assign wb.id = id[1];
+    assign wb_output.rd = mulh[1] ? result[63:32] : result[31:0];
+    assign wb_output.done = valid[1];
+    assign wb_output.id = id[1];
 
     ////////////////////////////////////////////////////
     //End of Implementation
