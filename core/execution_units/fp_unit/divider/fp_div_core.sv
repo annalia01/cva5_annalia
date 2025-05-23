@@ -27,7 +27,9 @@ module fp_div_core
     (
         input logic clk,
         input logic rst,
-        unsigned_division_interface.divider div
+        //unsigned_division_interface.divider div
+        unsigned_division_interface_divider_input div_input,
+        unsigned_division_interface_divider_output div_output
     );
 
     localparam DIV_WIDTH = div.DATA_WIDTH;
@@ -68,13 +70,13 @@ module fp_div_core
     always_ff @(posedge clk) begin
         if (rst) begin
             counter <= '0;
-            div.done <= 0;
+            div_output.done <= 0;
         end
         else begin
-            div.done <= counter_full;
+            div_output.done <= counter_full;
             if (counter_full)
                 counter <= '0;
-            else if (div.start | |counter)
+            else if (div_input.start | |counter)
                 counter <= counter + 1;
         end
     end
@@ -90,9 +92,9 @@ module fp_div_core
             current_q <= ZERO;
         end
         else begin
-            if (div.start) begin
-                divisor_r <= div.divisor;
-                four_wsum <= {3'b0, div.dividend}; //First iteration doesn't shift the inputs
+            if (div_input.start) begin
+                divisor_r <= div_input.divisor;
+                four_wsum <= {3'b0, div_input.dividend}; //First iteration doesn't shift the inputs
                 current_q <= ZERO;
                 wcarry <= '0;
                 quotient <= '0;
@@ -107,7 +109,7 @@ module fp_div_core
             end
         end
     end
-    assign div.quotient = quotient[QUOTIENT_WIDTH-2 -: DIV_WIDTH]; //Shift only once instead of twice because inputs are in the range 0.1X but the output can be X.XX
+    assign div_output.quotient = quotient[QUOTIENT_WIDTH-2 -: DIV_WIDTH]; //Shift only once instead of twice because inputs are in the range 0.1X but the output can be X.XX
 
 
     //Carry save adder operating on shifted input
@@ -141,7 +143,7 @@ module fp_div_core
     assign is_negative = sz_sum[DECIMAL_WIDTH-1];
 
     always_comb begin
-        div.remainder = sz_sum[DIV_WIDTH-1:0]; 
+        div_output.remainder = sz_sum[DIV_WIDTH-1:0]; 
 
         muxed_q = current_q;
         decremented_invalid = 0;
