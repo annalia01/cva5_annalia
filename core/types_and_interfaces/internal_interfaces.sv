@@ -444,12 +444,12 @@ typedef struct packed {
     logic [DATA_WIDTH-1:0] remainder;
     logic [DATA_WIDTH-1:0] result;
     logic done;
-} unsigned_sqrt_interface_sqrt_input;
+} unsigned_sqrt_interface_sqrt_output;
 
 typedef struct packed {
     logic [DATA_WIDTH-1:0] radicand;
     logic start;
-} unsigned_sqrt_interface_sqrt_output;
+} unsigned_sqrt_interface_sqrt_input;
 
 typedef struct packed {
     rs_addr_t rd_addr;
@@ -528,7 +528,7 @@ typedef struct packed {
 
 typedef struct packed {
     logic ack;
-} fp_intermediate_wb_interface_wb_input;
+} fp_intermediate_wb_interface_wb_output;
 
 typedef struct packed {
     id_t id;
@@ -547,7 +547,7 @@ typedef struct packed {
     logic subnormal;
     logic ignore_max_expo;
     logic d2s;
-} fp_intermediate_wb_interface_wb_output;
+} fp_intermediate_wb_interface_wb_input;
 
 typedef struct packed {
     logic reservation_valid;
