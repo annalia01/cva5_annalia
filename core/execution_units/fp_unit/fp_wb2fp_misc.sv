@@ -28,18 +28,24 @@ module fp_wb2fp_misc
 
     (
         input fp_wb2fp_misc_inputs_t args,
-        unit_issue_interface.unit issue,
-        fp_intermediate_wb_interface.unit wb
+
+         //unit_issue_interface.unit issue,
+        unit_unit_issue_interface_input issue_input,
+        unit_unit_issue_interface_output issue_output,
+        
+        //fp_intermediate_wb_interface.unit wb
+        fp_intermediate_wb_interface_unit_input wb_input,
+        fp_intermediate_wb_interface_unit_output wb_output
     );
 
     ////////////////////////////////////////////////////
     //Implementation
     //Sign injections, min/max, s2d, d2s, i2f, and moves
     //Single cycle, sharing a writeback port
-    assign issue.ready = wb.ack; //ACK functions as READY here
-    assign wb.id = issue.id;
-    assign wb.done = issue.new_request;
-    assign wb.rm = args.rm; //Only used for i2f
+    assign issue_output.ready = wb_input.ack; //ACK functions as READY here
+    assign wb_output.id = issue_input.id;
+    assign wb_output.done = issue_input.new_request;
+    assign wb_output.rm = args.rm; //Only used for i2f
 
     ////////////////////////////////////////////////////
     //FMV
@@ -182,47 +188,47 @@ module fp_wb2fp_misc
 
     //Multiplex outputs of different units
     always_comb begin
-        wb.expo_overflow = 0;
-        wb.fflags = '0;
-        wb.carry = 0;
-        wb.safe = 0;
-        wb.hidden = 0;
-        wb.grs = '0;
-        wb.clz = '0;
-        wb.right_shift = 0;
-        wb.right_shift_amt = 'x;
-        wb.subnormal = 0;
-        wb.ignore_max_expo = 1;
-        wb.d2s = 0;
+        wb_output.expo_overflow = 0;
+        wb_output.fflags = '0;
+        wb_output.carry = 0;
+        wb_output.safe = 0;
+        wb_output.hidden = 0;
+        wb_output.grs = '0;
+        wb_output.clz = '0;
+        wb_output.right_shift = 0;
+        wb_output.right_shift_amt = 'x;
+        wb_output.subnormal = 0;
+        wb_output.ignore_max_expo = 1;
+        wb_output.d2s = 0;
 
         if (args.fmv)
-            wb.rd = fmv_rd;
+            wb_output.rd = fmv_rd;
         else if (args.d2s) begin
-            wb.rd = d2s_rd;
-            wb.hidden = args.rs1_hidden;
-            wb.d2s = 1;
-            wb.fflags.nv = args.rs1_special_case.snan;
+            wb_output.rd = d2s_rd;
+            wb_output.hidden = args.rs1_hidden;
+            wb_output.d2s = 1;
+            wb_output.fflags.nv = args.rs1_special_case.snan;
         end
         else if (args.fsgnj) begin
-            wb.hidden = 1;
-            wb.rd = sgn_rd;
+            wb_output.hidden = 1;
+            wb_output.rd = sgn_rd;
         end
         else if (args.fminmax) begin
-            wb.rd = fminmax_rd;
-            wb.hidden = fminmax_hidden;
-            wb.fflags.nv = args.rs1_special_case.snan | args.rs2_special_case.snan;
-            wb.d2s = args.single;
+            wb_output.rd = fminmax_rd;
+            wb_output.hidden = fminmax_hidden;
+            wb_output.fflags.nv = args.rs1_special_case.snan | args.rs2_special_case.snan;
+            wb_output.d2s = args.single;
         end
         else if (args.i2f) begin
-            wb.rd = i2f_rd;
-            wb.grs = i2f_grs;
-            wb.clz = i2f_clz;
-            wb.d2s = args.single;
+            wb_output.rd = i2f_rd;
+            wb_output.grs = i2f_grs;
+            wb_output.clz = i2f_clz;
+            wb_output.d2s = args.single;
         end
         else begin
-            wb.rd = s2d_rd;
-            wb.hidden = args.rs1_hidden;
-            wb.fflags.nv = args.rs1_special_case.snan;
+            wb_output.rd = s2d_rd;
+            wb_output.hidden = args.rs1_hidden;
+            wb_output.fflags.nv = args.rs1_special_case.snan;
         end
     end
 
