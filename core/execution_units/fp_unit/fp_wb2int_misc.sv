@@ -31,8 +31,14 @@ module fp_wb2int_misc
         input logic clk,
         input logic rst,
         input fp_wb2int_misc_inputs_t args,
-        unit_issue_interface.unit issue,
-        unit_writeback_interface.unit wb,
+        //unit_issue_interface.unit issue,
+        unit_unit_issue_interface_input issue_input,
+        unit_unit_issue_interface_output issue_output,
+        
+        //unit_writeback_interface.unit wb,
+        unit_unit_writeback_interface_input wb_input,
+        unit_unit_writeback_interface_output wb_output,
+        
         output fflags_t fflags
     );
 
@@ -41,21 +47,21 @@ module fp_wb2int_misc
     //Comparisons, classifications, conversions to integer, and moves sharing a single writeback port
     //Implemented as a 2 cycle pipeline (though only the conversion needs the second cycle)
     logic advance;
-    assign advance = wb.ack | ~wb.done;
-    assign issue.ready = advance;
+    assign advance = wb_input.ack | ~wb_output.done;
+    assign issue_output.ready = advance;
 
     always_ff @(posedge clk) begin
         if (rst)
-            wb.done <= 0;
+            wb_output.done <= 0;
         else begin
-            if (issue.new_request)
-                wb.done <= 1;
-            else if (wb.ack)
-                wb.done <= 0;
+            if (issue_input.new_request)
+                wb_output.done <= 1;
+            else if (wb_input.ack)
+                wb_output.done <= 0;
         end
         
-        if (issue.new_request)
-            wb.id <= issue.id;
+        if (issue_input.new_request)
+            wb_output.id <= issue_input.id;
     end
 
     ////////////////////////////////////////////////////
@@ -129,7 +135,7 @@ module fp_wb2int_misc
     logic single_valid;
     logic single_invalid;
     always_ff @(posedge clk) begin
-        if (issue.new_request) begin
+        if (issue_input.new_request) begin
             single_valid <= ~args.f2i;
             single_invalid <= args.fcmp & invalid_cmp;
             if (args.fcmp)
@@ -252,7 +258,7 @@ module fp_wb2int_misc
 
     //F2I pipeline
     always_ff @ (posedge clk) begin
-        if (issue.new_request) begin
+        if (issue_input.new_request) begin
             r_greater_than_largest_unsigned_int <= greater_than_largest_unsigned_int;
             r_greater_than_largest_signed_int <= greater_than_largest_signed_int;
             r_smaller_than_smallest_signed_int <= smaller_than_smallest_signed_int;
@@ -268,11 +274,11 @@ module fp_wb2int_misc
     always_comb begin
         fflags = '0;
         if (single_valid) begin
-            wb.rd = single_rd;
+            wb_output.rd = single_rd;
             fflags.nv = single_invalid;
         end
         else begin
-            wb.rd = r_special ? special_case_result : f2i_int_rounded;
+            wb_output.rd = r_special ? special_case_result : f2i_int_rounded;
             fflags.nv = r_special;
             fflags.nx = r_inexact & ~r_special;
         end
