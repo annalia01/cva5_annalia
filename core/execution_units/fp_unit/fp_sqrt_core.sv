@@ -31,8 +31,8 @@ module fp_sqrt_core
         unsigned_sqrt_interface_sqrt_output sqrt_output
     );
 
-    typedef logic[$clog2(sqrt.DATA_WIDTH)-1:0] counter_t;
-    typedef logic[sqrt.DATA_WIDTH-1:0] frac_t;
+    typedef logic[$clog2(DATA_WIDTH)-1:0] counter_t;
+    typedef logic[DATA_WIDTH-1:0] frac_t;
 
     ////////////////////////////////////////////////////
     //Radix 2 square root
@@ -41,7 +41,7 @@ module fp_sqrt_core
     //Control logic
     logic counter_full;
     counter_t counter;
-    assign counter_full = counter == counter_t'(sqrt.DATA_WIDTH);
+    assign counter_full = counter == counter_t'(DATA_WIDTH);
 
     always_ff @(posedge clk) begin
         if (rst) begin
