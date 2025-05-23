@@ -552,7 +552,7 @@ module cva5
         .unit_needed (unit_needed[BR_ID]),
         .uses_rs (unit_uses_rs[BR_ID]),
         .uses_rd (unit_uses_rd[BR_ID]),
-        .rf (rf_issue.data),
+        .rf (rf_issue_issue_input.data),
         .constant_alu (constant_alu), 
         .issue_input (unit_issue_unit_input[BR_ID]),
         .issue_output (unit_issue_unit_output[BR_ID]),
@@ -571,11 +571,13 @@ module cva5
         .unit_needed (unit_needed[ALU_ID]),
         .uses_rs (unit_uses_rs[ALU_ID]),
         .uses_rd (unit_uses_rd[ALU_ID]),
-        .rf (rf_issue.data),
+        .rf (rf_issue_issue_input.data),
         .constant_alu (constant_alu),
         .issue_rs_addr (issue_rs_addr),
-        .issue (unit_issue[ALU_ID]),
-        .wb (unit_wb[ALU_ID])
+        .issue_input (unit_issue_unit_input[ALU_ID]),
+        .issue_output (unit_issue_unit_input[ALU_ID]),
+        .wb_input (unit_wb_unit_input[ALU_ID]),
+        .wb_output (unit_wb_unit_output[ALU_ID])
     );
 
     load_store_unit #(.CONFIG(CONFIG))
@@ -832,11 +834,14 @@ module cva5
             .fp_uses_rd (fp_unit_uses_rd[1]),
             .issue_stage_ready (issue_stage_ready),
             .dyn_rm (dyn_rm),
-            .int_rf (rf_issue.data),
-            .fp_rf (fp_rf_issue.data),
-            .issue (unit_issue[FPU_ID]),
-            .int_wb (unit_wb[FPU_ID]),
-            .fp_wb (fp_unit_wb[1]),
+            .int_rf (rf_issue_issue_input.data),
+            .fp_rf (fp_rf_issue_issue_input.data),
+            .issue_input (unit_issue_unit_input[FPU_ID]),
+            .issue_output (unit_issue_unit_output[FPU_ID]),
+            .int_wb_input (unit_wb_unit_input[FPU_ID]),
+            .int_wb_output (unit_wb_unit_output[FPU_ID]),
+            .fp_wb_input (fp_unit_wb_unit_input[1]),
+            .fp_wb_output (fp_unit_wb_unit_output[1]),
             .fflags (fflag_wmask)
         );
 
@@ -851,7 +856,8 @@ module cva5
             .decode_advance (decode_advance),
             .decode_uses_rd (fp_decode_uses_rd),
             .decode_rd_addr ('x),
-            .rf_issue (fp_rf_issue),
+            .rf_issue_input (fp_rf_issue_register_file_input),
+            -rf_issue_output (fp_rf_issue_register_file_output),
             .commit (fp_wb_packet),
             .wb_phys_addr (fp_wb_phys_addr)
         );
@@ -862,7 +868,8 @@ module cva5
             .rst (rst),
             .gc (gc),
             .decode_advance (decode_advance),
-            .decode (fp_decode_rename_interface),
+            .decode_input (fp_decode_rename_interface_renamer_input),
+            .decode_output (fp_decode_rename_interface_renamer_output),
             .issue (issue),
             .instruction_issued_with_rd (fp_instruction_issued_with_rd),
             .wb_retire (fp_wb_retire)
