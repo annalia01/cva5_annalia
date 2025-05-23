@@ -31,8 +31,15 @@ module fp_add
         input logic clk,
         input logic rst,
         input fp_add_inputs_t args,
-        unit_issue_interface.unit issue,
-        fp_intermediate_wb_interface.unit wb
+        
+        //unit_issue_interface.unit issue,
+        unit_unit_issue_interface_input issue_input,
+        unit_unit_issue_interface_output issue_output,
+        
+        //fp_intermediate_wb_interface.unit wb
+        fp_intermediate_wb_interface_unit_input wb_input,
+        fp_intermediate_wb_interface_unit_output wb_output,
+        
     );
 
     logic advance_to_add;
@@ -120,11 +127,11 @@ module fp_add
         if (rst)
             valid_r <= 0;
         else if (advance_to_add)
-            valid_r <= issue.new_request;
+            valid_r <= issue_input.new_request;
 
         if (advance_to_add) begin
             d2s_r <= args.single;
-            id_r <= issue.id;
+            id_r <= issue_input.id;
             rm_r <= args.rm;
 
             nv[1] <= nv[0];
@@ -178,18 +185,18 @@ module fp_add
     logic output_special;
     logic result_expo_zero;
 
-    assign advance_to_final = wb.ack | ~wb.done;
+    assign advance_to_final = wb_input.ack | ~wb_output.done;
 
     always_ff @ (posedge clk) begin
         if (rst)
-            wb.done <= 0;
+            wb_output.done <= 0;
         else if (advance_to_final)
-            wb.done <= valid_r;
+            wb_output.done <= valid_r;
 
         if (advance_to_final) begin
-            wb.d2s <= d2s_r;
-            wb.id <= id_r;
-            wb.rm <= rm_r;
+            wb_output.d2s <= d2s_r;
+            wb_output.id <= id_r;
+            wb_output.rm <= rm_r;
 
             nv[2] <= nv[1];
             inf[2] <= inf[1];
@@ -261,33 +268,33 @@ module fp_add
     end
 
     //Writeback
-    assign issue.ready = advance_to_add;
-    assign wb.fflags.nv = nv[2];
-    assign wb.fflags.of = 0;
-    assign wb.fflags.uf = 0;
-    assign wb.fflags.dz = 0;
-    assign wb.fflags.nx = 0; //Will be set by normalization
-    assign wb.carry = ~output_special & carry_set;
-    assign wb.safe = result_frac[FRAC_WIDTH+1] & ~output_special;
-    assign wb.hidden = result_frac[FRAC_WIDTH] | output_special;
-    assign wb.grs = output_special ? '0 : result_grs;
+    assign issue_output.ready = advance_to_add;
+    assign wb_output.fflags.nv = nv[2];
+    assign wb_output.fflags.of = 0;
+    assign wb_output.fflags.uf = 0;
+    assign wb_output.fflags.dz = 0;
+    assign wb_output.fflags.nx = 0; //Will be set by normalization
+    assign wb_output.carry = ~output_special & carry_set;
+    assign wb_output.safe = result_frac[FRAC_WIDTH+1] & ~output_special;
+    assign wb_output.hidden = result_frac[FRAC_WIDTH] | output_special;
+    assign wb_output.grs = output_special ? '0 : result_grs;
     always_comb begin
-        wb.clz = '0;
+        wb_output.clz = '0;
         if (~output_zero & ~output_special)
-            wb.clz[$bits(clz_count)-1:0] = clz_count;
+            wb_output.clz[$bits(clz_count)-1:0] = clz_count;
         
         if (output_special)
-            wb.rd = special_result;
+            wb_output.rd = special_result;
         else begin
-            wb.rd.d.sign = result_sign;
-            wb.rd.d.expo = result_expo;
-            wb.rd.d.frac = result_frac[FRAC_WIDTH-1:0];
+            wb_output.rd.d.sign = result_sign;
+            wb_output.rd.d.expo = result_expo;
+            wb_output.rd.d.frac = result_frac[FRAC_WIDTH-1:0];
         end
     end
-    assign wb.expo_overflow = result_expo_overflow & ~output_special;
-    assign wb.subnormal = ~|result_expo & ~output_special & ~wb.right_shift & ~result_expo_overflow;
-    assign wb.right_shift = ~output_special & (result_frac[FRAC_WIDTH+1] | carry_set);
-    assign wb.right_shift_amt = {{(EXPO_WIDTH-2){1'b0}}, carry_set, result_frac[FRAC_WIDTH+1] & ~carry_set}; //Either 1 or 2
-    assign wb.ignore_max_expo = output_special;
+    assign wb_output.expo_overflow = result_expo_overflow & ~output_special;
+    assign wb_output.subnormal = ~|result_expo & ~output_special & ~wb_output.right_shift & ~result_expo_overflow;
+    assign wb_output.right_shift = ~output_special & (result_frac[FRAC_WIDTH+1] | carry_set);
+    assign wb_output.right_shift_amt = {{(EXPO_WIDTH-2){1'b0}}, carry_set, result_frac[FRAC_WIDTH+1] & ~carry_set}; //Either 1 or 2
+    assign wb_output.ignore_max_expo = output_special;
 
 endmodule
