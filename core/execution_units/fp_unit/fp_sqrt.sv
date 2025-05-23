@@ -30,19 +30,29 @@ module fp_sqrt
         input logic clk,
         input logic rst,
         input fp_sqrt_inputs_t args,
-        unit_issue_interface.unit issue,
-        fp_intermediate_wb_interface.unit wb
+       
+        //unit_issue_interface.unit issue,
+        unit_unit_issue_interface_input issue_input,
+        unit_unit_issue_interface_output issue_output,
+        
+        //fp_intermediate_wb_interface.unit wb
+        fp_intermediate_wb_interface_unit_input wb_input,
+        fp_intermediate_wb_interface_unit_output wb_output
+        
     );
 
-    //Hidden + GRS + 1 (because without the +1 it gave the wrong sticky bit in certain cases)
-    unsigned_sqrt_interface #(.DATA_WIDTH(FRAC_WIDTH+5)) sqrt();
-
+    //unsigned_sqrt_interface #(.DATA_WIDTH(FRAC_WIDTH+3)) sqrt();
+    unsigned_sqrt_interface_requester_input sqrt_requester_input;
+    unsigned_sqrt_interface_requester_output sqrt_requester_output;
+    unsigned_sqrt_interface_sqrt_input sqrt_sqrt_input;
+    unsigned_sqrt_interface_sqrt_output sqrt_sqrt_output;
+    
     ////////////////////////////////////////////////////
     //Implementation
     //Iterative square root core, bypassed on special cases
     logic busy;
     logic new_request_r;
-    assign issue.ready = ~busy | wb.ack;
+    assign issue_output.ready = ~busy | wb_input.ack;
 
     always_ff @(posedge clk) begin
         if (rst) begin
@@ -50,11 +60,11 @@ module fp_sqrt
             new_request_r <= 0;
         end
         else begin
-            if (wb.ack)
+            if (wb_input.ack)
                 busy <= 0;
-            if (issue.new_request)
+            if (issue_input.new_request)
                 busy <= 1;
-            new_request_r <= issue.new_request;
+            new_request_r <= issue_input.new_request;
         end
     end
 
@@ -79,12 +89,12 @@ module fp_sqrt
     always_ff @(posedge clk) begin
         if (rst)
             early_exit <= 0;
-        else if (wb.ack)
+        else if (wb_input.ack)
             early_exit <= 0;
-        else if (issue.new_request)
+        else if (issue_input.new_request)
             early_exit <= inf | zero | qnan;
         
-        if (issue.new_request) begin
+        if (issue_input.new_request) begin
             result_sign <= args.rs1.d.sign;
             nv_r <= nv;
             qnan_r <= qnan;
@@ -121,7 +131,7 @@ module fp_sqrt
     assign result_expo = unbiased_expo[EXPO_WIDTH:1] + BIAS;
 
     always_ff @(posedge clk) begin
-        if (issue.new_request)
+        if (issue_input.new_request)
             norm_expo_r <= norm_expo;
     end
 
@@ -132,62 +142,63 @@ module fp_sqrt
     logic result_hidden;
     logic[3:0] result_grs;
     frac_d_t result_frac;
-    assign sqrt.radicand = norm_expo[0] ? {2'b01, args.rs1.d.frac, 3'b0} : {1'b1, args.rs1.d.frac, 4'b0};
-    assign sqrt.start = issue.new_request & ~(inf | zero | qnan);
-    assign {result_hidden, result_frac, result_grs} = sqrt.result;
+    assign sqrt_requester_output.radicand = norm_expo[0] ? {2'b01, args.rs1.d.frac, 3'b0} : {1'b1, args.rs1.d.frac, 4'b0};
+    assign sqrt_requester_output.start = issue_input.new_request & ~(inf | zero | qnan);
+    assign {result_hidden, result_frac, result_grs} = sqrt_requester_input.result;
 
     fp_sqrt_core sqrt_core (
-        .sqrt(sqrt),
+        .sqrt_input(sqrt_sqrt_input),
+        .sqrt_output(sqrt_sqrt_output),
     .*);
 
     ////////////////////////////////////////////////////
     //Output management
     //Either return the early execute values on cycle 1, or the regular values once the square root finishes
     logic sqrt_hold;
-    assign wb.done = sqrt.done | sqrt_hold | early_exit;
+    assign wb_output.done = sqrt_requester_input.done | sqrt_hold | early_exit;
 
     always_ff @(posedge clk) begin
         if (rst)
             sqrt_hold <= 0;
         else
-            sqrt_hold <= ~wb.ack & (sqrt.done | sqrt_hold);
+            sqrt_hold <= ~wb_input.ack & (sqrt_requester_input.done | sqrt_hold);
     end
     
     always_ff @(posedge clk) begin
-        if (issue.new_request) begin
-            wb.id <= issue.id;
-            wb.rm <= args.rm;
-            wb.d2s <= args.single;
+        if (issue_input.new_request) begin
+            wb_output.id <= issue_input.id;
+            wb_output.rm <= args.rm;
+            wb_output.d2s <= args.single;
         end
     end
 
     always_comb begin
         if (new_request_r)
-            wb.rd = special_result;
+            wb_output.rd = special_result;
         else begin
-            wb.rd.d.sign = 0;
-            wb.rd.d.expo = result_expo;
-            wb.rd.d.frac = result_frac;
+            wb_output.rd.d.sign = 0;
+            wb_output.rd.d.expo = result_expo;
+            wb_output.rd.d.frac = result_frac;
         end
-        wb.grs = '0;
+        wb_output.grs = '0;
         if (~new_request_r) begin
-            wb.grs[GRS_WIDTH-1-:4] = result_grs;
-            wb.grs[GRS_WIDTH-5-:FRAC_WIDTH+5] = sqrt.remainder;
+            wb_output.grs[GRS_WIDTH-1-:4] = result_grs;
+            wb_output.grs[GRS_WIDTH-5-:FRAC_WIDTH+5] = sqrt_requester_input.remainder;
         end
     end
-    assign wb.expo_overflow = 0;
-    assign wb.fflags.nv = nv_r;
-    assign wb.fflags.dz = 0;
-    assign wb.fflags.of = 0;
-    assign wb.fflags.uf = 0;
-    assign wb.fflags.nx = 0; //Set in writeback
-    assign wb.carry = 0;
-    assign wb.safe = 0;
-    assign wb.subnormal = 0;
-    assign wb.hidden = (new_request_r & ~zero_r) | (~new_request_r & result_hidden);
-    assign wb.clz = '0;
-    assign wb.right_shift = 0;
-    assign wb.right_shift_amt = 'x;
-    assign wb.ignore_max_expo = 1;
+    assign wb_output.expo_overflow = 0;
+    assign wb_output.fflags.nv = nv_r;
+    assign wb_output.fflags.dz = 0;
+    assign wb_output.fflags.of = 0;
+    assign wb_output.fflags.uf = 0;
+    assign wb_output.fflags.nx = 0; //Set in writeback
+    assign wb_output.carry = 0;
+    assign wb_output.safe = 0;
+    assign wb_output.subnormal = 0;
+    assign wb_output.hidden = (new_request_r & ~zero_r) | (~new_request_r & result_hidden);
+    assign wb_output.clz = '0;
+    assign wb_output.right_shift = 0;
+    assign wb_output.right_shift_amt = 'x;
+    assign wb_output.ignore_max_expo = 1;
 
 endmodule
