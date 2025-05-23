@@ -46,17 +46,17 @@ module cva5_fifo
     generate if (FIFO_DEPTH == 1) begin : gen_width_one
         always_ff @ (posedge clk) begin
             if (rst)
-                fifo.valid <= 0;
-            else if (fifo.push & ~fifo.pop)
-                fifo.valid <= 1;
-            else if (fifo.pop & ~fifo.push)
-                fifo.valid <= 0;
+                fifo_output.valid <= 0;
+            else if (fifo_input.push & ~fifo_input.pop)
+                fifo_output.valid <= 1;
+            else if (fifo_input.pop & ~fifo_input.push)
+                fifo_output.valid <= 0;
         end
-        assign fifo.full = fifo.valid;
+        assign fifo_output.full = fifo_output.valid;
 
         always_ff @ (posedge clk) begin
-            if (fifo.potential_push)
-                fifo.data_out <= fifo.data_in;
+            if (fifo_input.potential_push)
+                fifo_output.data_out <= fifo_input.data_in;
         end
     end
     //If depth is two, the FIFO can be implemented with two registers
@@ -71,20 +71,20 @@ module cva5_fifo
             if (rst)
                 inflight_count <= 0;
             else
-                inflight_count <= inflight_count + (LOG2_FIFO_DEPTH+1)'(fifo.pop) - (LOG2_FIFO_DEPTH+1)'(fifo.push);
+                inflight_count <= inflight_count + (LOG2_FIFO_DEPTH+1)'(fifo_input.pop) - (LOG2_FIFO_DEPTH+1)'(fifo_input.push);
         end
 
-        assign fifo.valid = inflight_count[LOG2_FIFO_DEPTH];
-        assign fifo.full = fifo.valid & ~|inflight_count[LOG2_FIFO_DEPTH-1:0];
+        assign fifo_output.valid = inflight_count[LOG2_FIFO_DEPTH];
+        assign fifo_output.full = fifo_output.valid & ~|inflight_count[LOG2_FIFO_DEPTH-1:0];
 
         always_ff @ (posedge clk) begin
-            if (fifo.push) begin
-                shift_reg[0] <= fifo.data_in;
+            if (fifo_input.push) begin
+                shift_reg[0] <= fifo_input.data_in;
                 shift_reg[1] <= shift_reg[0];
             end
         end
 
-        assign fifo.data_out = shift_reg[~inflight_count[0]];
+        assign fifo_output.data_out = shift_reg[~inflight_count[0]];
     end
     else begin : gen_width_3_plus
         logic [LOG2_FIFO_DEPTH-1:0] write_index;
@@ -96,22 +96,22 @@ module cva5_fifo
             if (rst)
                 inflight_count <= 0;
             else
-                inflight_count <= inflight_count + (LOG2_FIFO_DEPTH+1)'(fifo.pop) - (LOG2_FIFO_DEPTH+1)'(fifo.push);
+                inflight_count <= inflight_count + (LOG2_FIFO_DEPTH+1)'(fifo_input.pop) - (LOG2_FIFO_DEPTH+1)'(fifo_input.push);
         end
 
-        assign fifo.valid = inflight_count[LOG2_FIFO_DEPTH];
-        assign fifo.full = inflight_count == (LOG2_FIFO_DEPTH+1)'(-FIFO_DEPTH);
+        assign fifo_output.valid = inflight_count[LOG2_FIFO_DEPTH];
+        assign fifo_output.full = inflight_count == (LOG2_FIFO_DEPTH+1)'(-FIFO_DEPTH);
 
         lfsr #(.WIDTH(LOG2_FIFO_DEPTH), .NEEDS_RESET(1))
         lfsr_read_index (
             .clk (clk),.rst (rst),
-            .en(fifo.pop),
+            .en(fifo_input.pop),
             .value(read_index)
         );
         lfsr #(.WIDTH(LOG2_FIFO_DEPTH), .NEEDS_RESET(1))
         lfsr_write_index (
             .clk (clk), .rst (rst),
-            .en(fifo.push),
+            .en(fifo_input.push),
             .value(write_index)
         );
         //Force FIFO depth to next power of 2
@@ -120,9 +120,9 @@ module cva5_fifo
             .clk(clk),
             .waddr(write_index),
             .raddr(read_index),
-            .ram_write(fifo.potential_push),
-            .new_ram_data(fifo.data_in),
-            .ram_data_out(fifo.data_out)
+            .ram_write(fifo_input.potential_push),
+            .new_ram_data(fifo_input.data_in),
+            .ram_data_out(fifo_output.data_out)
         );
     end
     endgenerate
@@ -130,10 +130,10 @@ module cva5_fifo
     ////////////////////////////////////////////////////
     //Assertions
     fifo_overflow_assertion:
-        assert property (@(posedge clk) disable iff (rst) fifo.push |-> (~fifo.full | fifo.pop)) else $error("overflow");
+    assert property (@(posedge clk) disable iff (rst) fifo_input.push |-> (~fifo_output.full | fifo_input.pop)) else $error("overflow");
     fifo_potenial_push_overflow_assertion:
-        assert property (@(posedge clk) disable iff (rst) fifo.potential_push |-> (~fifo.full | fifo.pop)) else $error("potential push overflow");
+        assert property (@(posedge clk) disable iff (rst) fifo_input.potential_push |-> (~fifo_output.full | fifo_input.pop)) else $error("potential push overflow");
     fifo_underflow_assertion:
-        assert property (@(posedge clk) disable iff (rst) fifo.pop |-> (fifo.valid | fifo.push)) else $error("underflow");
+            assert property (@(posedge clk) disable iff (rst) fifo_input.pop |-> (fifo_output.valid | fifo_input.push)) else $error("underflow");
 
 endmodule
