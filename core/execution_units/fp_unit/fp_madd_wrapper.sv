@@ -34,13 +34,30 @@ module fp_madd_wrapper
         input logic clk,
         input logic rst,
         input fp_madd_inputs_t args,
-        unit_issue_interface.unit issue,
-        fp_intermediate_wb_interface.unit madd_wb,
-        fp_intermediate_wb_interface.unit mul_wb
+        //unit_issue_interface.unit issue,
+        unit_unit_issue_interface_input issue_input,
+        unit_unit_issue_interface_output issue_output,
+        
+        //fp_intermediate_wb_interface.unit madd_wb,
+        fp_intermediate_wb_interface_unit_input madd_wb_input,
+        fp_intermediate_wb_interface_unit_output madd_wb_output,
+        
+        //fp_intermediate_wb_interface.unit mul_wb
+        fp_intermediate_wb_interface_unit_input mul_wb_input,
+        fp_intermediate_wb_interface_unit_output mul_wb_output
     );
 
-    unit_issue_interface mul_issue();
-    unit_issue_interface add_issue();
+    //unit_issue_interface mul_issue();
+    decode_unit_issue_interface_input mul_issue_decode_input;
+    decode_unit_issue_interface_output mul_issue_decode_output;
+    unit_unit_issue_interface_input mul_issue_unit_input;
+    unit_unit_issue_interface_output mul_issue_unit_output;
+    
+    //unit_issue_interface add_issue();
+    decode_unit_issue_interface_input add_issue_decode_input;
+    decode_unit_issue_interface_output add_issue_decode_output;
+    unit_unit_issue_interface_input add_issue_unit_input;
+    unit_unit_issue_interface_output add_issue_unit_output;
 
     /////////////////////////////////////////////
     //Multiplication unit
@@ -51,16 +68,18 @@ module fp_madd_wrapper
     logic fma_valid_r;
     logic fma_advance;
     id_t fma_id;
-    assign fma_advance = ~fma_valid_r | add_issue.ready;
+    assign fma_advance = ~fma_valid_r | add_issue_decode_input.ready;
 
-    assign mul_issue.new_request = ~args.add & issue.new_request;
-    assign mul_issue.id = issue.id;
+    assign mul_issue_decode_output.new_request = ~args.add & issue_input.new_request;
+    assign mul_issue_decode_output.id = issue__input.id;
     fp_mul #(.CONFIG(CONFIG)) mul_core (
         .mul_args(args.mul_args),
         .fma(args.fma),
         .fma_args(args.fma_args),
-        .issue(mul_issue),
-        .wb(mul_wb),
+        .issue_input(mul_issue_unit_input),
+        .issue_output(mul_issue_unit_output),
+        .wb_input(mul_wb_input),
+        -wb_output(mul_wb_output),
         .add_ready(fma_advance),
         .add_valid(fma_valid),
         .add_id(fma_id),
@@ -87,15 +106,17 @@ module fp_madd_wrapper
     //FMA inputs are the registered outputs from the multiplier
     fp_add_inputs_t add_inputs;
     assign add_inputs = fma_valid_r ? fma_mul_outputs_r : args.add_args;
-    assign add_issue.id = fma_valid_r ? fma_id_r : issue.id;
-    assign add_issue.new_request = fma_valid_r | (issue.new_request & args.add);
+    assign add_issue_decode_output.id = fma_valid_r ? fma_id_r : issue_input.id;
+    assign add_issue_decode_output.new_request = fma_valid_r | (issue_input.new_request & args.add);
 
     fp_add add_core (
         .args(add_inputs),
-        .issue(add_issue),
-        .wb(madd_wb),
+        .issue(add_issue_unit_input),
+        .issue_output(add_issue_unit_output),
+        .wb_input(madd_wb_input),
+        .wb_output(madd_wb_output)
     .*);
 
-    assign issue.ready = (~args.add & mul_issue.ready) | (args.add & add_issue.ready & ~fma_valid_r);
+    assign issue_output.ready = (~args.add & mul_issue_unit_output.ready) | (args.add & add_issue_unit_output.ready & ~fma_valid_r);
 
 endmodule
