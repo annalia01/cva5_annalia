@@ -30,19 +30,29 @@ module fp_div
         input logic clk,
         input logic rst,
         input fp_div_inputs_t args,
-        unit_issue_interface.unit issue,
-        fp_intermediate_wb_interface.unit wb
+        
+        //unit_issue_interface.unit issue,
+        unit_unit_issue_interface_input issue_input,
+        unit_unit_issue_interface_output issue_output,
+        
+        //fp_intermediate_wb_interface.unit wb
+        fp_intermediate_wb_interface_unit_input wb_input,
+        fp_intermediate_wb_interface_unit_output wb_output
+        
     );
 
-    unsigned_division_interface #(.DATA_WIDTH(FRAC_WIDTH+3)) div();
-
+    //unsigned_division_interface #(.DATA_WIDTH(FRAC_WIDTH+3)) div();
+    unsigned_division_interface_requester_input div_requester_input;
+    unsigned_division_interface_requester_output div_requester_output;
+    unsigned_division_interface_divider_input div_divider_input;
+    unsigned_division_interface_divider_output div_divider_output;
     ////////////////////////////////////////////////////
     //Implementation
     //Iterative divider core, bypassed on special cases
     logic result_sign;
     logic busy;
     logic new_request_r;
-    assign issue.ready = ~busy | wb.ack;
+    assign issue_output.ready = ~busy | wb_input.ack;
 
     always_ff @(posedge clk) begin
         if (rst) begin
@@ -50,13 +60,13 @@ module fp_div
             new_request_r <= 0;
         end
         else begin
-            if (wb.ack)
+            if (wb_input.ack)
                 busy <= 0;
-            if (issue.new_request)
+            if (issue_input.new_request)
                 busy <= 1;
-            new_request_r <= issue.new_request;
+            new_request_r <= issue_input.new_request;
         end
-        if (issue.new_request)
+        if (issue_input.new_request)
             result_sign <= args.rs1.d.sign ^ args.rs2.d.sign;
     end
 
@@ -81,12 +91,12 @@ module fp_div
     always_ff @(posedge clk) begin
         if (rst)
             early_exit <= 0;
-        else if (wb.ack)
+        else if (wb_input.ack)
             early_exit <= 0;
-        else if (issue.new_request)
+        else if (issue_input.new_request)
             early_exit <= qnan | inf | zero;
         
-        if (issue.new_request) begin
+        if (issue_input.new_request) begin
             nv_r <= nv;
             dz_r <= dz;
             qnan_r <= qnan;
@@ -117,12 +127,13 @@ module fp_div
     logic[1:0] result_gr;
     fp_shift_amt_t left_shift_amt;
 
-    assign div.dividend = {1'b1, args.rs1.d.frac, 2'b0};
-    assign div.divisor = {1'b1, args.rs2.d.frac, 2'b0};
-    assign div.start = issue.new_request & ~(qnan | inf | zero); //start div only if no special cases
-    assign {result_hidden, result_frac, result_gr} = div.quotient;
+    assign div_requester_output.dividend = {1'b1, args.rs1.d.frac, 2'b0};
+    assign div_requester_output.divisor = {1'b1, args.rs2.d.frac, 2'b0};
+    assign div_requester_output.start = issue_input.new_request & ~(qnan | inf | zero); //start div only if no special cases
+    assign {result_hidden, result_frac, result_gr} = div_requester_input.quotient;
     fp_div_core div_core (
-        .div(div),
+        .div_input(div_divider_input),
+        .div_output(div_divider_output)
     .*);
 
     //Calculate CLZ: because 0.5 < result < 2, the shift amount is either 0 or 1
@@ -147,7 +158,7 @@ module fp_div
     assign right_shift_amt = ~expo_intermediate_r[EXPO_WIDTH-1:0] + 2;
 
     always_ff @(posedge clk) begin
-        if (issue.new_request)
+        if (issue_input.new_request)
             expo_intermediate_r <= expo_intermediate;
     end
 
@@ -156,48 +167,48 @@ module fp_div
     //Output management
     //Either return the early execute values on cycle 1, or the regular values once the divider finishes
     logic div_hold;
-    assign wb.done = div.done | div_hold | early_exit;
+    assign wb_output.done = div_divider_output.done | div_hold | early_exit;
 
     always_ff @(posedge clk) begin
         if (rst)
             div_hold <= 0;
         else
-            div_hold <= ~wb.ack & (div.done | div_hold);
+            div_hold <= ~wb_input.ack & (div_divider_output.done | div_hold);
     end
     
     always_ff @(posedge clk) begin
-        if (issue.new_request) begin
-            wb.id <= issue.id;
-            wb.rm <= args.rm;
-            wb.d2s <= args.single;
+        if (issue_input.new_request) begin
+            wb_output.id <= issue.id;
+            wb_output.rm <= args.rm;
+            wb_output.d2s <= args.single;
         end
     end
 
     always_comb begin
         if (new_request_r)
-            wb.rd = special_result;
+            wb_output.rd = special_result;
         else begin
-            wb.rd.d.sign = result_sign;
-            wb.rd.d.expo = expo_intermediate_r[EXPO_WIDTH-1:0];
-            wb.rd.d.frac = result_frac;
+            wb_output.rd.d.sign = result_sign;
+            wb_output.rd.d.expo = expo_intermediate_r[EXPO_WIDTH-1:0];
+            wb_output.rd.d.frac = result_frac;
         end
     end
     //Note that this overflow detection also captures subnormal numbers but they are ignored when subnormal is set
-    assign wb.expo_overflow = expo_intermediate_r[EXPO_WIDTH] & ~new_request_r;
-    assign wb.fflags.nv = nv_r;
-    assign wb.fflags.dz = dz_r;
+    assign wb_output.expo_overflow = expo_intermediate_r[EXPO_WIDTH] & ~new_request_r;
+    assign wb_output.fflags.nv = nv_r;
+    assign wb_output.fflags.dz = dz_r;
     //Set in writeback
-    assign wb.fflags.of = 0;
-    assign wb.fflags.uf = 0;
-    assign wb.fflags.nx = 0;
-    assign wb.carry = 0;
-    assign wb.safe = 0;
-    assign wb.hidden = (new_request_r & ~zero_r) | (~new_request_r & result_hidden);
-    assign wb.grs = new_request_r ? '0 : {result_gr, div.remainder, {(GRS_WIDTH-FRAC_WIDTH-5){1'b0}}};
-    assign wb.clz = new_request_r ? '0 : left_shift_amt;
-    assign wb.subnormal = ~new_request_r & right_shift;
-    assign wb.right_shift = ~new_request_r & right_shift;
-    assign wb.right_shift_amt = right_shift_amt;
-    assign wb.ignore_max_expo = new_request_r;
+    assign wb_output.fflags.of = 0;
+    assign wb_output.fflags.uf = 0;
+    assign wb_output.fflags.nx = 0;
+    assign wb_output.carry = 0;
+    assign wb_output.safe = 0;
+    assign wb_output.hidden = (new_request_r & ~zero_r) | (~new_request_r & result_hidden);
+    assign wb_output.grs = new_request_r ? '0 : {result_gr, div_requester_input.remainder, {(GRS_WIDTH-FRAC_WIDTH-5){1'b0}}};
+    assign wb_output.clz = new_request_r ? '0 : left_shift_amt;
+    assign wb_output.subnormal = ~new_request_r & right_shift;
+    assign wb_output.right_shift = ~new_request_r & right_shift;
+    assign wb_output.right_shift_amt = right_shift_amt;
+    assign wb_output.ignore_max_expo = new_request_r;
 
 endmodule
