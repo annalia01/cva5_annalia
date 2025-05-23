@@ -69,18 +69,18 @@
     fflags_t int_fflags;
     fflags_t fp_fflags;
     //unit_issue_interface intermediate_issue[4:0](); //FMA, FDIV, FSQRT, WB2FP, WB2INT
-    unit_unit_issue_interface_input intermediate_issue_unit_input;
-    unit_unit_issue_interface_output intermediate_issue_unit_output;
-    unit_unit_writeback_interface_input intermediate_issue_writeback_input;
-    unit_unit_writeback_interface_output intermediate_issue_writeback_output;
-    decode_unit_issue_interface_input intermediate_issue_decode_input,
-    decode_unit_issue_interface_output intermediate_issue_decode_output,
+    unit_unit_issue_interface_input intermediate_issue_unit_input[4:0];
+    unit_unit_issue_interface_output intermediate_issue_unit_output[4:0];
+    unit_unit_writeback_interface_input intermediate_issue_writeback_input[4:0];
+    unit_unit_writeback_interface_output intermediate_issue_writeback_output[4:0];
+    decode_unit_issue_interface_input intermediate_issue_decode_input[4:0],
+    decode_unit_issue_interface_output intermediate_issue_decode_output[4:0],
   
     //fp_intermediate_wb_interface intermediate_unit_wb[3:0](); //FMADD, FMUL, FDIV/FSQRT, WB2FP
-    fp_intermediate_wb_interface_unit_input intermediate_unit_wb_unit_input;
-    fp_intermediate_wb_interface_unit_output intermediate_unit_wb_unit_output;
-    fp_intermediate_wb_interface_wb_input intermediate_unit_wb_wb_input;
-    fp_intermediate_wb_interface_wb_output intermediate_unit_wb_wb_output;
+    fp_intermediate_wb_interface_unit_input intermediate_unit_wb_unit_input[3:0];
+    fp_intermediate_wb_interface_unit_output intermediate_unit_wb_unit_output[3:0];
+    fp_intermediate_wb_interface_wb_input intermediate_unit_wb_wb_input[3:0];
+    fp_intermediate_wb_interface_wb_output intermediate_unit_wb_wb_output[3:0];
   
     ////////////////////////////////////////////////////
     //Implementation
@@ -170,7 +170,7 @@
     rm_t rm_r;
 
     fp_preprocessing_packet_t pkt;
-    assign pkt.valid = issue.new_request;
+    assign pkt.valid = issue_input.new_request;
     assign pkt.unit[0] = is_fma | is_fmul | is_fadd;
     assign pkt.unit[1] = is_div;
     assign pkt.unit[2] = is_sqrt;
@@ -180,7 +180,7 @@
     assign pkt.rs2 = fp_rf[RS2];
     assign pkt.rs3 = fp_rf[RS3];
     assign pkt.int_rs1 = int_rf[RS1];
-    assign pkt.id = issue.id;
+    assign pkt.id = issue_input.id;
     assign pkt.is_single = is_single;
     assign pkt.is_fma = is_fma;
     assign pkt.is_fadd = is_fadd;
@@ -248,35 +248,44 @@
         .madd_wb_input(intermediate_unit_wb_unit_input[1]),
         .madd_wb_output(intermediate_unit_wb_unit_output[1]),
         .mul_wb_input(intermediate_unit_wb_unit_input[2]),
-     .mul_wb_output(intermediate_unit_wb_unit_output[2])
+     .mul_wb_output(intermediate_unit_wb_unit_output[2]),
     .*);
 
     fp_div_sqrt_wrapper div_sqrt_inst (
         .div_inputs(div_inputs),
         .sqrt_inputs(sqrt_inputs),
-        .div_issue(intermediate_issue[1]),
-        .sqrt_issue(intermediate_issue[2]),
-        .wb(intermediate_unit_wb[0]),
+        .div_issue_input(intermediate_issue_unit_input[1]),
+        .div_issue_output(intermediate_issue_unit_output[1]),
+        .sqrt_issue_input(intermediate_issue_unit_input[2]),
+        .sqrt_issue_output(intermediate_issue_unit_output[2]),
+        .wb_input(intermediate_unit_wb_unit_input[0]),
+     .wb_output(intermediate_unit_wb_unit_output[0]),
     .*);
 
     fp_wb2fp_misc wb2fp_misc_inst (
         .args(wb2fp_inputs),
-        .issue(intermediate_issue[3]),
-        .wb(intermediate_unit_wb[3])
+        .issue_input(intermediate_issue_unit_input[3]),
+        .issue_output(intermediate_issue_unit_output[3]),
+        .wb_input(intermediate_unit_wb_unit_input[3]),
+        .wb_output(intermediate_unit_wb_unit_output[3]),
     );
 
     fp_wb2int_misc wb2int_misc_inst (
         .args(wb2int_inputs),
-        .issue(intermediate_issue[4]),
-        .wb(int_wb),
+        .issue_input(intermediate_issue_unit_input[4]),
+        .issue_output(intermediate_issue_unit_output[4]),
+        .wb_input(int_wb_input),
+        .wb_output(int_wb_output),
         .fflags(int_fflags),
     .*);
 
     ////////////////////////////////////////////////////
     //Normalization and rounding
     fp_normalize_rounding_top #(.NUM_WB_UNITS(4)) norm_round_inst (
-        .intermediate_wb(intermediate_unit_wb),
-        .wb(fp_wb),
+     .intermediate_wb_input(intermediate_unit_wb_wb_input),
+     .intermediate_wb_output(intermediate_unit_wb_wb_output),
+     .wb_input(fp_wb_input),
+     .wb_output(fp_wb_output),
         .fflags(fp_fflags),
     .*);
 
@@ -285,8 +294,8 @@
     //Combine both wb2int and wb2fp in one because they can writeback simultaneously
     logic fp_accepted;
     logic int_accepted;
-    assign fp_accepted = fp_wb.done & fp_wb.ack;
-    assign int_accepted = int_wb.done & int_wb.ack;
+    assign fp_accepted = fp_wb_output.done & fp_wb_input.ack;
+    assign int_accepted = int_wb_output.done & int_wb_input.ack;
 
     always_comb begin
         fflags = '0;
