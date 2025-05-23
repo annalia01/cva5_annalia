@@ -26,7 +26,9 @@ module fp_sqrt_core
     (
         input logic clk,
         input logic rst,
-        unsigned_sqrt_interface.sqrt sqrt
+        //unsigned_sqrt_interface.sqrt sqrt
+        unsigned_sqrt_interface_sqrt_input sqrt_input,
+        unsigned_sqrt_interface_sqrt_output sqrt_output
     );
 
     typedef logic[$clog2(sqrt.DATA_WIDTH)-1:0] counter_t;
@@ -44,13 +46,13 @@ module fp_sqrt_core
     always_ff @(posedge clk) begin
         if (rst) begin
             counter <= '0;
-            sqrt.done <= 0;
+            sqrt_output.done <= 0;
         end
         else begin
-            sqrt.done <= counter_full;
+            sqrt_output_input.done <= counter_full;
             if (counter_full)
                 counter <= '0;
-            else if (sqrt.start | |counter)
+            else if (sqrt_input.start | |counter)
                 counter <= counter + 1;
         end
     end
@@ -64,21 +66,21 @@ module fp_sqrt_core
     frac_t subtraction;
     logic overflow;
 
-    assign subtractor = {sqrt.result[sqrt.DATA_WIDTH-3:0], 2'b01};
+    assign subtractor = {sqrt_output.result[DATA_WIDTH-3:0], 2'b01};
     assign {overflow, subtraction} = current_subtractend - subtractor;
 
     ////////////////////////////////////////////////////
     //Next Working subtractend Determination
     always_comb begin
         if (overflow)
-            next_subtractend = {current_subtractend[sqrt.DATA_WIDTH-3:0], rad[sqrt.DATA_WIDTH-1-:2]};
+            next_subtractend = {current_subtractend[DATA_WIDTH-3:0], rad[DATA_WIDTH-1-:2]};
         else
-            next_subtractend = {subtraction[sqrt.DATA_WIDTH-3:0], rad[sqrt.DATA_WIDTH-1-:2]};
+            next_subtractend = {subtraction[DATA_WIDTH-3:0], rad[DATA_WIDTH-1-:2]};
     end
 
     always_ff @(posedge clk) begin
-        if (sqrt.start) //First working subtractend extracts the upper 2 bits of the radicand
-            current_subtractend <= {{(sqrt.DATA_WIDTH-2){1'b0}}, sqrt.radicand[sqrt.DATA_WIDTH-1-:2]};
+        if (sqrt_input.start) //First working subtractend extracts the upper 2 bits of the radicand
+            current_subtractend <= {{(DATA_WIDTH-2){1'b0}}, sqrt_input.radicand[DATA_WIDTH-1-:2]};
         else
             current_subtractend <= next_subtractend;
     end
@@ -86,8 +88,8 @@ module fp_sqrt_core
     ////////////////////////////////////////////////////
     //Update remaining radicand digits
     always_ff @(posedge clk) begin
-        if (sqrt.start) //The upper two bits are pushed to the working subtractend register
-            rad <= {sqrt.radicand[sqrt.DATA_WIDTH-3:0], 2'b00};
+        if (sqrt_input.start) //The upper two bits are pushed to the working subtractend register
+            rad <= {sqrt_input.radicand[DATA_WIDTH-3:0], 2'b00};
         else
             rad <= rad << 2;
     end
@@ -95,14 +97,14 @@ module fp_sqrt_core
     ////////////////////////////////////////////////////
     //Quotient Determination
     always_ff @(posedge clk) begin
-        if (sqrt.start) begin
-            sqrt.result <= '0;
-            sqrt.remainder <= '0;
+        if (sqrt_input.start) begin
+            sqrt_output.result <= '0;
+            sqrt_output.remainder <= '0;
         end
         else if (|counter) begin
             //Shift in new quotient bit
-            sqrt.result <= {sqrt.result[sqrt.DATA_WIDTH-2:0], ~overflow};
-            sqrt.remainder <= next_subtractend;
+            sqrt_output.result <= {sqrt_output.result[DATA_WIDTH-2:0], ~overflow};
+            sqrt_output.remainder <= next_subtractend;
         end
     end
 
