@@ -36,8 +36,14 @@ module fp_mul
         input fp_mul_inputs_t mul_args,
         input logic fma,
         input fp_fma_inputs_t fma_args,
-        unit_issue_interface.unit issue,
-        fp_intermediate_wb_interface.unit wb,
+        //unit_issue_interface.unit issue,
+        unit_unit_issue_interface_input issue_input,
+        unit_unit_issue_interface_output issue_output,
+        
+        //fp_intermediate_wb_interface.unit wb,
+        fp_intermediate_wb_interface_unit_input wb_input,
+        fp_intermediate_wb_interface_unit_output wb_output,
+
         input logic add_ready,
         output logic add_valid,
         output id_t add_id,
@@ -76,7 +82,7 @@ module fp_mul
     fp_shift_amt_t rs2_prenormalize_shift_amt[1:0];
     fp_fma_inputs_t fma_info[2:0];
 
-    assign id[0] = issue.id;
+    assign id[0] = issue_input.id;
     assign rm[0] = mul_args.rm;
     assign d2s[0] = mul_args.single;
     assign sign_xor[0] = mul_args.rs1.d.sign ^ mul_args.rs2.d.sign;
@@ -95,7 +101,7 @@ module fp_mul
         if (rst)
             valid_r <= 0;
         else if (advance_to_mul2)
-            valid_r <= issue.new_request;
+            valid_r <= issue_input.new_request;
 
         if (advance_to_mul2) begin
             fma_r <= fma;
@@ -156,15 +162,15 @@ module fp_mul
     logic result_expo_is_zero;
     logic output_special;
 
-    assign advance_to_final = (wb.done & wb.ack) | (~wb.done & ~add_valid) | (add_valid & add_ready);
+    assign advance_to_final = (wb_output.done & wb_input.ack) | (~wb_output.done & ~add_valid) | (add_valid & add_ready);
 
     always_ff @ (posedge clk) begin
         if (rst) begin
-            wb.done <= 0;
+            wb_output.done <= 0;
             add_valid <= 0;
         end
         else if (advance_to_final) begin
-            wb.done <= valid_r & ~fma_r;
+            wb_output.done <= valid_r & ~fma_r;
             add_valid <= valid_r & fma_r;
         end
 
@@ -223,55 +229,55 @@ module fp_mul
         end
     end
 
-    assign issue.ready = advance_to_mul2;
+    assign issue_output.ready = advance_to_mul2;
 
     //Writeback
-    assign wb.id = id[2];
-    assign wb.d2s = d2s[2];
-    assign wb.fflags.nv = nv[2];
-    assign wb.fflags.of = 0;
-    assign wb.fflags.uf = 0;
-    assign wb.fflags.dz = 0;
-    assign wb.fflags.nx = 0; //Will be set by normalization
-    assign wb.carry = 0;
-    assign wb.safe = result_safe;
-    assign wb.hidden = output_special ? qnan[2] | inf[2] : result_hidden;
-    assign wb.clz = '0;
-    assign wb.ignore_max_expo = output_special;
+    assign wb_output.id = id[2];
+    assign wb_output.d2s = d2s[2];
+    assign wb_output.fflags.nv = nv[2];
+    assign wb_output.fflags.of = 0;
+    assign wb_output.fflags.uf = 0;
+    assign wb_output.fflags.dz = 0;
+    assign wb_output.fflags.nx = 0; //Will be set by normalization
+    assign wb_output.carry = 0;
+    assign wb_output.safe = result_safe;
+    assign wb_output.hidden = output_special ? qnan[2] | inf[2] : result_hidden;
+    assign wb_output.clz = '0;
+    assign wb_output.ignore_max_expo = output_special;
     always_comb begin
-        wb.grs = '0;
+        wb_output.grs = '0;
         if (subnormal_zero[2])
-            wb.grs[0] = 1'b1; //Result is some nonzero number - set sticky
+            wb_output.grs[0] = 1'b1; //Result is some nonzero number - set sticky
         else if (~output_special)
-            wb.grs[GRS_WIDTH-1-:HALF_GRS_WIDTH] = result_grs;
+            wb_output.grs[GRS_WIDTH-1-:HALF_GRS_WIDTH] = result_grs;
 
         if (output_special)
-            wb.rd = special_result;
+            wb_output.rd = special_result;
         else begin
-            wb.rd.d.sign = sign_xor[2];
-            wb.rd.d.expo = result_expo;
-            wb.rd.d.frac = result_frac;
+            wb_output.rd.d.sign = sign_xor[2];
+            wb_output.rd.d.expo = result_expo;
+            wb_output.rd.d.frac = result_frac;
         end
     end
-    assign wb.rm = rm[2];
-    assign wb.expo_overflow = result_expo_overflow & ~output_special;
-    assign wb.subnormal = result_is_subnormal & ~output_special;
-    assign wb.right_shift = (result_is_subnormal | result_safe) & ~output_special;
+    assign wb_output.rm = rm[2];
+    assign wb_output.expo_overflow = result_expo_overflow & ~output_special;
+    assign wb_output.subnormal = result_is_subnormal & ~output_special;
+    assign wb_output.right_shift = (result_is_subnormal | result_safe) & ~output_special;
     //If the result is subnormal, right shift frac by 1 extra position
-    assign wb.right_shift_amt = result_is_subnormal ? result_expo+1 : 1;
+    assign wb_output.right_shift_amt = result_is_subnormal ? result_expo+1 : 1;
 
     //FMA args
     assign add_id = id[2];
     assign add_args.rm = rm[2];
     assign add_args.single = d2s[2];
     assign add_args.add = fma_info[2].add_sign;
-    assign add_args.rs1_expo_overflow = wb.expo_overflow;
-    assign add_args.fp_add_grs = wb.grs;
-    assign add_args.rs1.d.sign = wb.rd.d.sign ^ fma_info[2].mul_sign;
-    assign add_args.rs1.d.expo = result_expo_is_negative ? '0 : wb.rd.d.expo;
-    assign add_args.rs1.d.frac = wb.rd.d.frac;
-    assign add_args.rs1_hidden = wb.hidden;
-    assign add_args.rs1_safe = wb.safe & ~subnormal_zero[2];
+    assign add_args.rs1_expo_overflow = wb_output.expo_overflow;
+    assign add_args.fp_add_grs = wb_output.grs;
+    assign add_args.rs1.d.sign = wb_output.rd.d.sign ^ fma_info[2].mul_sign;
+    assign add_args.rs1.d.expo = result_expo_is_negative ? '0 : wb_output.rd.d.expo;
+    assign add_args.rs1.d.frac = wb_output.rd.d.frac;
+    assign add_args.rs1_hidden = wb_output.hidden;
+    assign add_args.rs1_safe = wb_output.safe & ~subnormal_zero[2];
     assign add_args.rs1_special_case.zero = true_zero[2] | subnormal_zero[2];
     assign add_args.rs1_special_case.inf = inf[2];
     assign add_args.rs1_special_case.qnan = qnan[2];
