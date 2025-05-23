@@ -243,9 +243,12 @@
     //Execution Units
     fp_madd_wrapper #(.CONFIG(CONFIG)) fp_madd_inst (
         .args(madd_inputs),
-        .issue(intermediate_issue[0]),
-        .madd_wb(intermediate_unit_wb[1]),
-        .mul_wb(intermediate_unit_wb[2]),
+        .issue_input(intermediate_issue_unit_input[0]),
+        .issue_output(intermediate_issue_unit_output[0]),
+        .madd_wb_input(intermediate_unit_wb_unit_input[1]),
+        .madd_wb_output(intermediate_unit_wb_unit_output[1]),
+        .mul_wb_input(intermediate_unit_wb_unit_input[2]),
+     .mul_wb_output(intermediate_unit_wb_unit_output[2])
     .*);
 
     fp_div_sqrt_wrapper div_sqrt_inst (
