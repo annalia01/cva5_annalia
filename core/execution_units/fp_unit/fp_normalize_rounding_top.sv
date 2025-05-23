@@ -32,8 +32,13 @@ module fp_normalize_rounding_top
     )(
         input logic clk,
         input logic rst,
-        fp_intermediate_wb_interface.wb intermediate_wb[NUM_WB_UNITS-1:0], //Priority order highest to lowest
-        unit_writeback_interface.unit wb,
+        //fp_intermediate_wb_interface.wb intermediate_wb[NUM_WB_UNITS-1:0], //Priority order highest to lowest
+        fp_intermediate_wb_interface_wb_input intermediate_wb_input[NUM_WB_UNITS-1:0],
+        fp_intermediate_wb_interface_wb_output intermediate_wb_output[NUM_WB_UNITS-1:0],
+        
+        //unit_writeback_interface.unit wb,
+         unit_unit_writeback_interface_input wb_input,
+         unit_unit_writeback_interface_output wb_output,
         output fflags_t fflags
     );
 
@@ -132,23 +137,23 @@ module fp_normalize_rounding_top
     logic[NUM_WB_UNITS-1:0] unit_d2s;
 
     generate for (genvar i = 0; i < NUM_WB_UNITS; i++) begin : gen_unpack
-        assign intermediate_wb[i].ack = unit_ack[i];
-        assign unit_instruction_id[i] = intermediate_wb[i].id;
-        assign unit_done[i] = intermediate_wb[i].done;
-        assign unit_rd[i] = intermediate_wb[i].rd;
-        assign unit_expo_overflow[i] = intermediate_wb[i].expo_overflow;
-        assign unit_fflags[i] = intermediate_wb[i].fflags;
-        assign unit_rm[i] = intermediate_wb[i].rm;
-        assign unit_carry[i] = intermediate_wb[i].carry;
-        assign unit_safe[i] = intermediate_wb[i].safe;
-        assign unit_hidden[i] = intermediate_wb[i].hidden;
-        assign unit_grs[i] = intermediate_wb[i].grs;
-        assign unit_clz[i] = intermediate_wb[i].clz;
-        assign unit_right_shift[i] = intermediate_wb[i].right_shift;
-        assign unit_right_shift_amt[i] = intermediate_wb[i].right_shift_amt;
-        assign unit_subnormal[i] = intermediate_wb[i].subnormal;
-        assign unit_ignore_max_expo[i] = intermediate_wb[i].ignore_max_expo;
-        assign unit_d2s[i] = intermediate_wb[i].d2s;
+        assign intermediate_wb_output[i].ack = unit_ack[i];
+        assign unit_instruction_id[i] = intermediate_wb_input[i].id;
+        assign unit_done[i] = intermediate_wb_input[i].done;
+        assign unit_rd[i] = intermediate_wb_input[i].rd;
+        assign unit_expo_overflow[i] = intermediate_wb_input[i].expo_overflow;
+        assign unit_fflags[i] = intermediate_wb_input[i].fflags;
+        assign unit_rm[i] = intermediate_wb_input[i].rm;
+        assign unit_carry[i] = intermediate_wb_input[i].carry;
+        assign unit_safe[i] = intermediate_wb_input[i].safe;
+        assign unit_hidden[i] = intermediate_wb_input[i].hidden;
+        assign unit_grs[i] = intermediate_wb_input[i].grs;
+        assign unit_clz[i] = intermediate_wb_input[i].clz;
+        assign unit_right_shift[i] = intermediate_wb_input[i].right_shift;
+        assign unit_right_shift_amt[i] = intermediate_wb_input[i].right_shift_amt;
+        assign unit_subnormal[i] = intermediate_wb_input[i].subnormal;
+        assign unit_ignore_max_expo[i] = intermediate_wb_input[i].ignore_max_expo;
+        assign unit_d2s[i] = intermediate_wb_input[i].d2s;
     end endgenerate
 
     //Per-ID muxes for commit buffer
@@ -298,7 +303,7 @@ module fp_normalize_rounding_top
     end
 
     //Advance logic
-    assign advance_round = wb.ack | ~round_packet.valid;
+    assign advance_round = wb_input.ack | ~round_packet.valid;
     always_ff @ (posedge clk) begin
         if (rst)
             round_packet.valid <= 0;
@@ -371,9 +376,9 @@ module fp_normalize_rounding_top
     assign overflow_exp = (frac_overflow & &round_packet.data.d.expo[EXPO_WIDTH-1:1]) | round_packet.expo_overflow;
 
     //Output
-    assign wb.id = round_packet.id;
-    assign wb.done = round_packet.valid;
-    assign wb.rd = rd.raw;
+    assign wb_output.id = round_packet.id;
+    assign wb_output.done = round_packet.valid;
+    assign wb_output.rd = rd.raw;
     always_comb begin
         if (overflow_exp) begin
             //Convert dp overflow value to sp
