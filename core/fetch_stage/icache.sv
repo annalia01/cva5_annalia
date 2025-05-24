@@ -220,9 +220,9 @@ module icache
         .rst(rst), //clears the read_hit_allowed flag
         .ifence(ifence_in_progress),
         .ifence_addr(ifence_counter),
-        .stage1_line_addr(addr_utils.getTagLineAddr(new_request_addr)),
-        .stage2_line_addr(addr_utils.getTagLineAddr(second_cycle_addr)),
-        .stage2_tag(addr_utils.getTag(second_cycle_addr)),
+        .stage1_line_addr(addr_utils_getTagLineAddr(new_request_addr)),
+        .stage2_line_addr(addr_utils_getTagLineAddr(second_cycle_addr)),
+        .stage2_tag(addr_utils_getTag(second_cycle_addr)),
         .update_way(tag_update_way),
         .update(tag_update),
         .stage1_adv(new_request & icache_on),
@@ -241,9 +241,9 @@ module icache
         .a_en(mem_input.rvalid),
         .a_wbe(tag_update_way),
         .a_wdata({CONFIG.ICACHE.WAYS{mem_input.rdata}}),
-        .a_addr(addr_utils.getDataLineAddr({second_cycle_addr[31:SCONFIG.SUB_LINE_ADDR_W+2], word_count, 2'b0})),
+        .a_addr(addr_utils_getDataLineAddr({second_cycle_addr[31:SCONFIG.SUB_LINE_ADDR_W+2], word_count, 2'b0})),
         .b_en(new_request),
-        .b_addr(addr_utils.getDataLineAddr(new_request_addr)),
+        .b_addr(addr_utils_getDataLineAddr(new_request_addr)),
         .b_rdata(data_out),
     .*);
 
