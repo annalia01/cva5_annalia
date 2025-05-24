@@ -4,8 +4,13 @@ module debug_module (
         input logic rst,
         input logic clk,
 
-        dmi_cpu_interface.dmi debug[NUM_CPUS-1:0],
-        dmi_interface.dmi jtag,
+        //dmi_cpu_interface.dmi debug[NUM_CPUS-1:0],
+        dmi_dmi_cpu_interface_input debug_input[NUM_CPUS-1:0],
+        dmi_dmi_cpu_interface_output debug_output[NUM_CPUS-1:0],
+        
+        //dmi_interface.dmi jtag,
+        dmi_dmi_interface_input jtag_input,
+        dmi_dmi_interface_output jtag_output,
         
         //SIMULATION ONLY:
         output DM_Status_t DMS_out,
@@ -92,7 +97,7 @@ module debug_module (
     //Implementation
     //////////////////////////////////////////////////////////////////
     
-    assign write_request = jtag.new_request & ~jtag.rnw;
+    assign write_request = jtag_input.new_request & ~jtag_input.rnw;
 
    
     //DMC
@@ -105,8 +110,8 @@ module debug_module (
         else begin
         DMC.dmactive <= 1;
             if (write_request) begin
-                if (jtag.address == DEBUG_MODULE_CONTROL) begin
-                    DMC <= jtag.jtag_data;
+                    if (jtag_input.address == DEBUG_MODULE_CONTROL) begin
+                    DMC <= jtag_input.jtag_data;
                     new_DMC_req <= 1;
                 end
             end
@@ -122,8 +127,8 @@ module debug_module (
     if (rst) 
         hart_array_window_select <= 0;
     else
-        if(write_request & jtag.address == HART_ARRAY_WINDOW_SELECT) 
-            hart_array_window_select <= jtag.jtag_data;          
+            if(write_request & jtag_input.address == HART_ARRAY_WINDOW_SELECT) 
+            hart_array_window_select <= jtag_input.jtag_data;          
      end  
     
     //HART_ARRAY_WINDOW
@@ -131,8 +136,8 @@ module debug_module (
     if (rst) 
         hart_array_window <= 0;
     else
-        if(write_request & jtag.address == HART_ARRAY_WINDOW) 
-            hart_array_window <= jtag.jtag_data;          
+            if(write_request & jtag_input.address == HART_ARRAY_WINDOW) 
+            hart_array_window <= jtag_input.jtag_data;          
     end  
     //Selected Harts (hasel,hartsel)-----------------------------------------
     logic[31:0] hartsel_mask;
@@ -164,8 +169,8 @@ module debug_module (
     if (rst) 
         ABS_COMMAND <= 0;
     else
-        if(write_request & jtag.address == ABSTRACT_COMMAND) 
-            ABS_COMMAND <= jtag.jtag_data;          
+            if(write_request & jtag_input.address == ABSTRACT_COMMAND) 
+            ABS_COMMAND <= jtag_input.jtag_data;          
     end
     //ABS_DATA0------------return data for abstract commands
     logic[31:0][NUM_CPUS-1:0] abs_cmd_return;
@@ -178,8 +183,8 @@ module debug_module (
                 abs_cmd_sig[index] <= 0;
             end
             else begin
-                if(debug[index].rnw_ack && debug[index].rnw) begin
-                    abs_cmd_return[index] <= debug[index].read_data;
+                    if(debug_input[index].rnw_ack && debug_output[index].rnw) begin
+                            abs_cmd_return[index] <= debug_input[index].read_data;
                     abs_cmd_sig[index] <= 1;              
                 end
                 else begin
@@ -195,8 +200,8 @@ module debug_module (
     if (rst) 
         abstract_data[0] <= 0;
     else
-        if(write_request & jtag.address == ABSTRACT_DATA0) 
-            abstract_data[0] <= jtag.jtag_data;
+            if(write_request & jtag_input.address == ABSTRACT_DATA0) 
+                    abstract_data[0] <= jtag_input.jtag_data;
         else if(|abs_cmd_sig) 
             abstract_data[0] <= abs_cmd_return[selected_hart]; //PROBLEM: THIS NEEDS TO BE OBTAINED FROM THE CORRECT PROCESSOR
     end
@@ -205,8 +210,8 @@ module debug_module (
     if (rst) 
         abstract_data[1] <= 0;
     else
-        if(write_request & jtag.address == ABSTRACT_DATA1) 
-            abstract_data[1] <= jtag.jtag_data;          
+            if(write_request & jtag_input.address == ABSTRACT_DATA1) 
+                    abstract_data[1] <= jtag_input.jtag_data;          
     end
     
     //ABS_DATA2
@@ -214,21 +219,21 @@ module debug_module (
     if (rst) 
         abstract_data[2] <= 0;
     else
-        if(write_request & jtag.address == ABSTRACT_DATA2) 
-            abstract_data[2] <= jtag.jtag_data;          
+            if(write_request & jtag_input.address == ABSTRACT_DATA2) 
+                    abstract_data[2] <= jtag_input.jtag_data;          
     end
     //////////////////
     
     //program_buffer
     always_ff @ (posedge clk) begin
-        if (write_request && jtag.address >= 7'h20 &&  jtag.address < 7'h30)
-            program_buffer[jtag.address[3:0]] <= jtag.jtag_data;
+            if (write_request && jtag_input.address >= 7'h20 &&  jtag_input.address < 7'h30)
+                    program_buffer[jtag_input.address[3:0]] <= jtag_input.jtag_data;
     end
-    assign program_buffer_output = program_buffer[jtag.address[3:0]];
+        assign program_buffer_output = program_buffer[jtag_input.address[3:0]];
 
     //read mux
     always_comb begin
-        case(jtag.address)
+            case(jtag_input.address)
             ABSTRACT_DATA0 : data_out <= abstract_data[0];
             ABSTRACT_DATA1  : data_out <= abstract_data[1];
             ABSTRACT_DATA2  : data_out <= abstract_data[2];
@@ -266,13 +271,13 @@ module debug_module (
     end
 
     always_ff @ (posedge clk) begin
-        jtag.handled <= jtag.new_request;
+        jtag_output.handled <= jtag_input.new_request;
     end        
 
-    assign jtag.response = DMI_STATUS_SUCCESS;
+    assign jtag_output.response = DMI_STATUS_SUCCESS;
     
     always_ff @ (posedge clk) begin
-        jtag.dmi_data <= data_out;
+        jtag_output.dmi_data <= data_out;
     end    
 
 
@@ -282,7 +287,7 @@ logic [NUM_CPUS-1:0] all_running_array;
 generate
 for (index = 0; index < NUM_CPUS; index=index+1) begin
     always_comb begin
-         all_running_array[index] <= debug[index].running;
+            all_running_array[index] <= debug_input[index].running;
     end
 end
 endgenerate
@@ -303,14 +308,14 @@ generate
 for (index = 0; index < NUM_CPUS; index=index+1) begin
     always_ff @(posedge clk) begin
         if (rst)
-            debug[index].reset <= 0;
+            debug_output[index].reset <= 0;
         else begin
             if(DMC.hartreset && new_DMC_req) begin //Send New Requests
-                debug[index].reset <= selected_harts[index];
+                debug_output[index].reset <= selected_harts[index];
 
             end
-            else if(debug[index].reset_ack == 1 || DMC.hartreset == 0) begin //Wait for Ack OR Debugger has unset the reset bit
-                debug[index].reset <= 0;
+                else if(debug_input[index].reset_ack == 1 || DMC.hartreset == 0) begin //Wait for Ack OR Debugger has unset the reset bit
+                debug_output[index].reset <= 0;
             end
         end
     end
@@ -339,15 +344,15 @@ generate
 for (index = 0; index < NUM_CPUS; index=index+1) begin
     always_ff @(posedge clk) begin
         if (rst)
-            debug[index].halt <= 0;
+            debug_output[index].halt <= 0;
         else begin
             if(DMC.haltreq && new_DMC_req) begin //Send New Requests
-                debug[index].halt <= selected_harts[index];
+                debug_output[index].halt <= selected_harts[index];
            end
-           else if(ABS_COMMAND.cmdtype == 1 && debug[index].running) //From Abstract Command
-                debug[index].halt <= hartsel_mask[index];
-            else if(debug[index].halt_ack == 1) begin //Wait for Ack
-                debug[index].halt <= 0;
+                else if(ABS_COMMAND.cmdtype == 1 && debug_input[index].running) //From Abstract Command
+                debug_output[index].halt <= hartsel_mask[index];
+            else if(debug_output[index].halt_ack == 1) begin //Wait for Ack
+                debug_output[index].halt <= 0;
             end
         end
     end
@@ -370,14 +375,14 @@ generate
 for (index = 0; index < NUM_CPUS; index=index+1) begin
     always_ff @(posedge clk) begin
         if (rst)
-            debug[index].resume <= 0;
+            debug_output[index].resume <= 0;
         else begin
             if(DMC.resumereq && new_DMC_req && ~DMC.haltreq) begin //Send New Requests
-                debug[index].resume <= selected_harts[index];
+                debug_output[index].resume <= selected_harts[index];
 
             end
-            else if(debug[index].resume_ack == 1) begin //Wait for Ack
-                debug[index].resume <= 0;
+                else if(debug_input[index].resume_ack == 1) begin //Wait for Ack
+                debug_output[index].resume <= 0;
             end
         end
     end
@@ -449,7 +454,7 @@ if (rst) begin
     new_ABSTRACT_req <= 0;
 end
 else begin
-    if (write_request && jtag.address == ABSTRACT_COMMAND) begin
+        if (write_request && jtag_input.address == ABSTRACT_COMMAND) begin
         new_ABSTRACT_req <= 1;
     end
     else begin
@@ -464,7 +469,7 @@ for (index = 0; index < NUM_CPUS; index=index+1) begin
     always_comb begin
         if(new_ABSTRACT_req && hartsel_mask[index]) //if a new request is sent, reset the bit
             abstract_ack_array[index] <= 0;
-        if(debug[index].rnw_ack) //only set bit if the ack has been recieved
+            if(debug_input[index].rnw_ack) //only set bit if the ack has been recieved
             abstract_ack_array[index] <= 1;
     end
 end
@@ -481,7 +486,7 @@ assign execute_program_buffer = |execute_program_buffer_postexec | |execute_prog
 generate  
 for (index = 0; index < NUM_CPUS; index=index+1) begin
     always_comb begin
-        program_buffer_addr[index] <= debug[index].program_buffer_addr;
+            program_buffer_addr[index] <= debug_output[index].program_buffer_addr;
     end
 end
 endgenerate
@@ -534,40 +539,40 @@ for (index = 0; index < NUM_CPUS; index=index+1) begin
 
     always_ff @ (posedge clk) begin
         if (rst) begin
-            debug[index].rnw <= 0;
-            debug[index].rnw_new_request <= 0;
+            debug_output[index].rnw <= 0;
+            debug_output[index].rnw_new_request <= 0;
             execute_program_buffer_postexec[index] <= 0;
             execute_program_buffer_auto [index] <= 0;
-            debug[index].write_data <= 0;
-            debug[index].read_write_addr <= 0;
+            debug_output[index].write_data <= 0;
+            debug_output[index].read_write_addr <= 0;
         end
         else begin
             execute_program_buffer_postexec[index] <= 0; //Only 1 when rnw_ack has been recieved for the first time and postexec is true
             if(execute_program_buffer) begin //happens in the next cycle after directly above code
-                debug[index].write_data <= 31'h20; //write data always comes from data0 register for 32-bits
-                debug[index].read_write_addr <= 16'h7b1;
-                debug[index].rnw <= 0;
-                debug[index].rnw_new_request <= hartsel_mask[index];
+                debug_output[index].write_data <= 31'h20; //write data always comes from data0 register for 32-bits
+                debug_output[index].read_write_addr <= 16'h7b1;
+                debug_output[index].rnw <= 0;
+                debug_output[index].rnw_new_request <= hartsel_mask[index];
                 new_execute_program_buffer_req[index] <= 0;
             end    
             else if(ABS_COMMAND.cmdtype == 0 && ABS_COMMAND[17] && ~ABS_COMMAND[16] && new_ABSTRACT_req) begin //Read/Transfer
-                debug[index].rnw <= 1;
-                debug[index].rnw_new_request <= hartsel_mask[index]; //WE HAVE TO USE ONLY THE HARTSEL MASK AND NOT THE ARRAY MASK
-                debug[index].write_data <= abstract_data[0]; //write data always comes from data0 register for 32-bits
-                debug[index].read_write_addr <= ABS_COMMAND[15:0];
+                debug_output[index].rnw <= 1;
+                debug_output[index].rnw_new_request <= hartsel_mask[index]; //WE HAVE TO USE ONLY THE HARTSEL MASK AND NOT THE ARRAY MASK
+                debug_output[index].write_data <= abstract_data[0]; //write data always comes from data0 register for 32-bits
+                debug_output[index].read_write_addr <= ABS_COMMAND[15:0];
                 if(ABS_COMMAND[18])
                    new_execute_program_buffer_req[index] <= 1;               
             end
             else if(ABS_COMMAND.cmdtype == 0 && ABS_COMMAND[17] && ABS_COMMAND[16] && new_ABSTRACT_req) begin //Write
-                debug[index].rnw <= 0;
-                debug[index].rnw_new_request <= hartsel_mask[index]; //WE HAVE TO USE ONLY THE HARTSEL MASK AND NOT THE ARRAY MASK
-                debug[index].write_data <= abstract_data[0]; //write data always comes from data0 register for 32-bits
-                debug[index].read_write_addr <= ABS_COMMAND[15:0];
+                debug_output[index].rnw <= 0;
+                debug_output[index].rnw_new_request <= hartsel_mask[index]; //WE HAVE TO USE ONLY THE HARTSEL MASK AND NOT THE ARRAY MASK
+                debug_output[index].write_data <= abstract_data[0]; //write data always comes from data0 register for 32-bits
+                debug_output[index].read_write_addr <= ABS_COMMAND[15:0];
                 if(ABS_COMMAND[18])
                    new_execute_program_buffer_req[index] <= 1;  
             end
-            else if(debug[index].rnw_ack) begin
-                debug[index].rnw_new_request <= 0;
+                else if(debug_input[index].rnw_ack) begin
+                debug_output[index].rnw_new_request <= 0;
                 if(ABS_COMMAND[18]) begin //postexec
                     if(execute_program_buffer_postexec[index] == 0 && execute_program_buffer_auto [index]== 0 && new_execute_program_buffer_req[index]) begin
                         execute_program_buffer_postexec[index] <= 1; // activation signal
@@ -584,7 +589,7 @@ for (index = 0; index < NUM_CPUS; index=index+1) begin
                     //execute_program_buffer <= 1;
                 end
             end
-            else if(ABS_COMMAND.cmdtype == 1 && ~debug[index].running && new_ABSTRACT_req) begin
+                else if(ABS_COMMAND.cmdtype == 1 && ~debug_input[index].running && new_ABSTRACT_req) begin
                 execute_program_buffer_auto[index] <= 1;
             end
         end     
@@ -597,27 +602,27 @@ generate
 for (index = 0; index < NUM_CPUS; index=index+1) begin
     always_ff @ (posedge clk) begin
         if (rst) begin
-            debug[index].program_buffer_data <= 0;
+            debug_output[index].program_buffer_data <= 0;
         end
         else begin
-            case(debug[index].program_buffer_addr)
-                31'h20 : debug[index].program_buffer_data <= PROGRAM_BUFFER0;
-                31'h21 : debug[index].program_buffer_data <= PROGRAM_BUFFER1; 
-                31'h22 : debug[index].program_buffer_data <= PROGRAM_BUFFER2; 
-                31'h23 : debug[index].program_buffer_data <= PROGRAM_BUFFER3; 
-                31'h24 : debug[index].program_buffer_data <= PROGRAM_BUFFER4; 
-                31'h25 : debug[index].program_buffer_data <= PROGRAM_BUFFER5; 
-                31'h26 : debug[index].program_buffer_data <= PROGRAM_BUFFER6; 
-                31'h27 : debug[index].program_buffer_data <= PROGRAM_BUFFER7; 
-                31'h28 : debug[index].program_buffer_data <= PROGRAM_BUFFER8; 
-                31'h29 : debug[index].program_buffer_data <= PROGRAM_BUFFER9; 
-                31'h2A : debug[index].program_buffer_data <= PROGRAM_BUFFER10; 
-                31'h2B : debug[index].program_buffer_data <= PROGRAM_BUFFER11; 
-                31'h2C : debug[index].program_buffer_data <= PROGRAM_BUFFER12; 
-                31'h2D : debug[index].program_buffer_data <= PROGRAM_BUFFER13; 
-                31'h2E : debug[index].program_buffer_data <= PROGRAM_BUFFER14; 
-                31'h2F : debug[index].program_buffer_data <= PROGRAM_BUFFER15; 
-                default : debug[index].program_buffer_data <= 0;
+            case(debug_output[index].program_buffer_addr)
+                31'h20 : debug_output[index].program_buffer_data <= PROGRAM_BUFFER0;
+                31'h21 : debug_output[index].program_buffer_data <= PROGRAM_BUFFER1; 
+                31'h22 : debug_output[index].program_buffer_data <= PROGRAM_BUFFER2; 
+                31'h23 : debug_output[index].program_buffer_data <= PROGRAM_BUFFER3; 
+                31'h24 : debug_output[index].program_buffer_data <= PROGRAM_BUFFER4; 
+                31'h25 : debug_output[index].program_buffer_data <= PROGRAM_BUFFER5; 
+                31'h26 : debug_output[index].program_buffer_data <= PROGRAM_BUFFER6; 
+                31'h27 : debug_output[index].program_buffer_data <= PROGRAM_BUFFER7; 
+                31'h28 : debug_output[index].program_buffer_data <= PROGRAM_BUFFER8; 
+                31'h29 : debug_output[index].program_buffer_data <= PROGRAM_BUFFER9; 
+                31'h2A : debug_output[index].program_buffer_data <= PROGRAM_BUFFER10; 
+                31'h2B : debug_output[index].program_buffer_data <= PROGRAM_BUFFER11; 
+                31'h2C : debug_output[index].program_buffer_data <= PROGRAM_BUFFER12; 
+                31'h2D : debug_output[index].program_buffer_data <= PROGRAM_BUFFER13; 
+                31'h2E : debug_output[index].program_buffer_data <= PROGRAM_BUFFER14; 
+                31'h2F : debug_output[index].program_buffer_data <= PROGRAM_BUFFER15; 
+                default : debug_output[index].program_buffer_data <= 0;
             endcase
             
         end
