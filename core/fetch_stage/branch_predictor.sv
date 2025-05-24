@@ -132,9 +132,9 @@ module branch_predictor
                 .a_en(tag_update_way[i]),
                 .a_wbe(tag_update_way[i]),
                 .a_wdata(ex_entry),
-                .a_addr(addr_utils.getHashedLineAddr(br_results.pc, i)),
+                .a_addr(addr_utils_getHashedLineAddr(br_results.pc, i)),
                 .b_en(bp.new_mem_request),
-                .b_addr(addr_utils.getHashedLineAddr(bp_input.next_pc, i)),
+                .b_addr(addr_utils_getHashedLineAddr(bp_input.next_pc, i)),
                 .b_rdata(if_entry[i]),
             .*);
 
@@ -147,13 +147,13 @@ module branch_predictor
                 .a_en(target_update_way[i]),
                 .a_wbe(target_update_way[i]),
                 .a_wdata(br_results.target_pc),
-                .a_addr(addr_utils.getHashedLineAddr(br_results.pc, i)),
+                .a_addr(addr_utils_getHashedLineAddr(br_results.pc, i)),
                 .b_en(bp.new_mem_request),
-                .b_addr(addr_utils.getHashedLineAddr(bp_input.next_pc, i)),
+                .b_addr(addr_utils_getHashedLineAddr(bp_input.next_pc, i)),
                 .b_rdata(predicted_pc[i]),
             .*);
 
-            assign tag_matches[i] = ({if_entry[i].valid, if_entry[i].tag} == {1'b1, addr_utils.getTag(bp_input.if_pc)});
+            assign tag_matches[i] = ({if_entry[i].valid, if_entry[i].tag} == {1'b1, addr_utils_getTag(bp_input.if_pc)});
         end
     end
     endgenerate
@@ -204,7 +204,7 @@ module branch_predictor
     ////////////////////////////////////////////////////
     //Execution stage update
     assign ex_entry.valid = 1;
-    assign ex_entry.tag = addr_utils.getTag(br_results.pc);
+    assign ex_entry.tag = addr_utils_getTag(br_results.pc);
     assign ex_entry.is_branch = br_results.is_branch;
     assign ex_entry.is_return = br_results.is_return;
     assign ex_entry.is_call = br_results.is_call;
