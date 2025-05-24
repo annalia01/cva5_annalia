@@ -4,7 +4,9 @@ module jtag_module (
         input logic clk,
         output logic reset,
         
-        dmi_interface.jtag dm
+        //dmi_interface.jtag dm
+        jtag_dmi_interface_input dm_input,
+        jtag_dmi_interface_output dm_output
         );
 
     dtmcs_t dtmcs, dtmcs_jtag;
@@ -46,7 +48,7 @@ module jtag_module (
         else if (dmi_write & dmi_busy)
             dtmcs.dmistat <= DMI_STATUS_BUSY;
         else if (dm.handled & ~dmi_error)
-            dtmcs.dmistat <= dm.response;
+            dtmcs.dmistat <= dm_input.response;
     end
     ////////////////////////////////////////
 
@@ -67,7 +69,7 @@ module jtag_module (
         else if (dtmcs_write & (dtmcs_jtag.dmireset | dtmcs_jtag.dmihardreset))
             dmi_error <= 0;     
         else if ((dmi_write & dmi_busy) ||
-                (dm.handled && dm.response == DMI_STATUS_FAILED))
+                 (dm_input.handled && dm_input.response == DMI_STATUS_FAILED))
                 dmi_error <= 1; 
                 //dmi_error <= 0; //Test
                  
@@ -86,8 +88,8 @@ module jtag_module (
             dmi.data <= 0;
         else if (dmi_write & ~(dmi_busy | dmi_error) && (dmi_jtag.op == DMI_OP_WRITE))
             dmi.data <= dmi_jtag.data;
-        else if (dm.handled)
-            dmi.data <= dm.dmi_data;
+            else if (dm_input.handled)
+            dmi.data <= dm_input.dmi_data;
     end
     
     always_ff @ (posedge clk) begin
@@ -99,26 +101,26 @@ module jtag_module (
             dmi.op <= dmi_jtag.op;
         else if (dmi_write & dmi_busy & ~dmi_error)
             dmi.op <= DMI_STATUS_BUSY;
-        else if (dm.handled & ~dmi_error)
-            dmi.op <= dm.response;
+            else if (dm_input.handled & ~dmi_error)
+            dmi.op <= dm_input.response;
     end
     
     //Output logic
-    assign dm.address = dmi.address;
-    assign dm.jtag_data = dmi.data;
+    assign dm_output.address = dmi.address;
+    assign dm_output.jtag_data = dmi.data;
     
     always_ff @ (posedge clk) begin
         if (dmi_write & ~(dmi_busy | dmi_error))
-            dm.rnw <= (dmi_jtag.op == DMI_OP_READ) || (dmi_jtag.op == DMI_OP_NOP);
+            dm_output.rnw <= (dmi_jtag.op == DMI_OP_READ) || (dmi_jtag.op == DMI_OP_NOP);
     end        
         
     always_ff @ (posedge clk) begin
         if (reset)
-            dm.new_request <= 0;   
+            dm_output.new_request <= 0;   
         else if (dmi_write & ~(dmi_busy | dmi_error))
-            dm.new_request <= (dmi_jtag.op == DMI_OP_READ) || (dmi_jtag.op == DMI_OP_WRITE) || (dmi_jtag.op == DMI_OP_NOP);
+            dm_output.new_request <= (dmi_jtag.op == DMI_OP_READ) || (dmi_jtag.op == DMI_OP_WRITE) || (dmi_jtag.op == DMI_OP_NOP);
         else
-            dm.new_request <= 0;
+            dm_output.new_request <= 0;
     end
     
 endmodule
