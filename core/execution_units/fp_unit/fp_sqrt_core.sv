@@ -49,7 +49,7 @@ module fp_sqrt_core
             sqrt_output.done <= 0;
         end
         else begin
-            sqrt_output_input.done <= counter_full;
+            sqrt_output.done <= counter_full;
             if (counter_full)
                 counter <= '0;
             else if (sqrt_input.start | |counter)
