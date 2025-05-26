@@ -248,18 +248,18 @@ module decode_and_issue
     assign issue_hold = gc.issue_hold | pre_issue_exception_pending;
 
     generate for (genvar i=0; i<REGFILE_READ_PORTS; i++)
-        assign operand_ready[i] = ~rf.inuse[i] | (rf.inuse[i] & ~issue_uses_rs[i]);
+        assign operand_ready[i] = ~rf_input.inuse[i] | (rf_input.inuse[i] & ~issue_uses_rs[i]);
     endgenerate
 
     generate for (genvar i=0; i<3; i++)
-        assign fp_operand_ready[i] = ~fp_rf.inuse[i] | (fp_rf.inuse[i] & ~fp_issue_uses_rs[i]);
+        assign fp_operand_ready[i] = ~fp_rf_input.inuse[i] | (fp_rf_input.inuse[i] & ~fp_issue_uses_rs[i]);
     endgenerate
 
     ////////////////////////////////////////////////////
     //Unit EX signals
     generate for (genvar i = 0; i < MAX_NUM_UNITS; i++) begin : gen_unit_issue_signals
         assign unit_issue_output[i].possible_issue = issue.stage_valid & unit_needed_issue_stage[i] & unit_issue_input[i].ready;
-        assign issue_to[i] = unit_issue[i].possible_issue & (&operand_ready) & (&fp_operand_ready) & ~issue_hold;
+        assign issue_to[i] = unit_issue_output[i].possible_issue & (&operand_ready) & (&fp_operand_ready) & ~issue_hold;
         assign unit_issue_output[i].new_request = issue_to[i] & ~gc.fetch_flush;
         assign unit_issue_output[i].id = issue.id;
     end endgenerate
@@ -346,20 +346,20 @@ module decode_and_issue
             pre_issue_exception_pending <= illegal_instruction_pattern | (~decode.fetch_metadata.ok);
     end
 
-    assign new_exception = issue.stage_valid & pre_issue_exception_pending & ~(gc.issue_hold | gc.fetch_flush) & ~exception.valid;
+        assign new_exception = issue.stage_valid & pre_issue_exception_pending & ~(gc.issue_hold | gc.fetch_flush) & ~exception_output.valid;
 
     always_ff @(posedge clk) begin
         if (rst)
-            exception.valid <= 0;
+            exception_output.valid <= 0;
         else
-            exception.valid <= new_exception;
+            exception_output.valid <= new_exception;
     end
 
-    assign exception.possible = 0; //Not needed because occurs before issue
-    assign exception.code = ecode;
-    assign exception.tval = tval;
-    assign exception.pc = issue.pc;
-    assign exception.discard = 0;
+    assign exception_output.possible = 0; //Not needed because occurs before issue
+    assign exception_output.code = ecode;
+    assign exception_output.tval = tval;
+    assign exception_output.pc = issue.pc;
+    assign exception_output.discard = 0;
 
     end endgenerate
     ////////////////////////////////////////////////////
