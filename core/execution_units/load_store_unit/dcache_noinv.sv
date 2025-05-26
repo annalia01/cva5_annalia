@@ -103,7 +103,7 @@ module dcache_noinv
     logic stage1_is_lr;
     logic stage1_is_sc;
 
-    assign write_outstanding = ((current_state != IDLE) & (~stage1.rnw | stage1.amo)) | mem_output.write_outstanding;
+    assign write_outstanding = ((current_state != IDLE) & (~stage1.rnw | stage1.amo)) | mem_input.write_outstanding;
 
     //Peeking avoids circular logic
     assign ls_output.ready = (current_state == IDLE) | (stage1_done & ~stage1.cbo & ~(db_wen & load_peek & load_addr_peek[31:DB_ADDR_LEN+2] == stage1.addr[31:DB_ADDR_LEN+2] & load_addr_peek[2+:DB_ADDR_LEN] == db_addr));
