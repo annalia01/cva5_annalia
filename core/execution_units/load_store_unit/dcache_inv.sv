@@ -463,7 +463,7 @@ module dcache_inv
                 mem_output.wdata = 'x;
                 mem_output.rnw = 1;
                 mem_output.rmw = 0;
-                stage1_tb_write = ~stage1.uncacheable & mem.ack;
+                stage1_tb_write = ~stage1.uncacheable & mem_input.ack;
                 stage1_tb_wval = 1;
                 db_wen = mem_input.rvalid & ~stage1.uncacheable;
                 db_wdata = mem_input.rdata;
