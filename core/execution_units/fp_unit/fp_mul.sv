@@ -295,7 +295,7 @@ module fp_mul
     logic[EXPO_WIDTH+1:0] expo_diff_rs1;
 
     assign rs3_add = ~fma_info[2].rs3_hidden;
-    assign expo_diff_rs1 = result_expo_is_negative & ~output_special ? result_expo_diff : {1'b0, wb.expo_overflow, wb.rd.d.expo};
+    assign expo_diff_rs1 = result_expo_is_negative & ~output_special ? result_expo_diff : {1'b0, wb_output.expo_overflow, wb_output.rd.d.expo};
     assign expo_diff = expo_diff_rs1 - ({2'b0, fma_info[2].rs3.d.expo} + {{(EXPO_WIDTH){1'b0}}, 1'b0, rs3_add});
     assign expo_diff_negate = -expo_diff[EXPO_WIDTH:0];
     assign add_args.expo_diff = expo_diff[EXPO_WIDTH+1] ? expo_diff_negate : expo_diff[EXPO_WIDTH:0];
