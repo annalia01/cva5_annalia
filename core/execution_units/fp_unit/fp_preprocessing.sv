@@ -67,7 +67,7 @@ module fp_preprocessing
     generate for (genvar i = 0; i < FP_NUM_UNITS; i++) begin : gen_interface_unpack
         assign unit_ready[i] = unit_issue_input[i].ready;
         assign unit_issue_output[i].new_request = issue_to[i];
-        assign unit_issue_outputi].id = id_r;
+        assign unit_issue_output[i].id = id_r;
     end endgenerate
 
     assign stage2_advance = stage2_valid & |(unit_ready & target_unit);
