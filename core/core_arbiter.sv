@@ -47,8 +47,8 @@ module core_arbiter
         slave_ro_mem_interface_output immu_output,
         
         //mem_interface.mem_master mem
-        master_ro_mem_interface_input mem_input,
-        master_ro_mem_interface_output mem_output
+        master_mem_mem_interface_input mem_input,
+        master_mem_mem_interface_output mem_output
     );
 
     //Multiplexes memory requests and demultiplexes memory responses
@@ -77,17 +77,17 @@ module core_arbiter
     assign dcache_output.inv_addr = mem_input.inv_addr;
     assign dcache_output.write_outstanding = mem_input.write_outstanding;
     assign dcache_output.ack = mem_input.ack & port == 2'b00;
-    assign dcache_output.rvalid = mem_input.rvalid & mem.rid == 2'b00;
+    assign dcache_output.rvalid = mem_input.rvalid & mem_input.rid == 2'b00;
     assign dcache_output.rdata = mem_input.rdata;
     //I$
     assign request[1] = INCLUDE_ICACHE ? icache_intput.request : 0;
-    assign addr[1] = INCLUDE_ICACHE ? icache_intput.addr : 'x;
-    assign rlen[1] = INCLUDE_ICACHE ? icache_intput.rlen : 'x;
+    assign addr[1] = INCLUDE_ICACHE ? icache_input.addr : 'x;
+    assign rlen[1] = INCLUDE_ICACHE ? icache_input.rlen : 'x;
     assign rnw[1] = INCLUDE_ICACHE ? 1 : 'x;
     assign rmw[1] = INCLUDE_ICACHE ? 0 : 'x;
-    assign icache_output.ack = mem.ack & port == 2'b01;
-    assign icache_output.rvalid = mem.rvalid & mem.rid == 2'b01;
-    assign icache_output.rdata = mem.rdata;
+    assign icache_output.ack = mem_input.ack & port == 2'b01;
+    assign icache_output.rvalid = mem_input.rvalid & mem_input.rid == 2'b01;
+    assign icache_output.rdata = mem_input.rdata;
     //DMMU
     assign request[2] = INCLUDE_MMUS ? dmmu_input.request : 0;
     assign addr[2] = INCLUDE_MMUS ? dmmu_input.addr : 'x;
@@ -96,7 +96,7 @@ module core_arbiter
     assign rmw[2] = INCLUDE_MMUS ? 0 : 'x;
     assign dmmu_output.rdata = mem_input.rdata;
     assign dmmu_output.ack = mem_input.ack & port == 2'b10;
-    assign dmmu_output.rvalid = mem_input.rvalid & mem.rid == 2'b10;
+    assign dmmu_output.rvalid = mem_input.rvalid & mem_input.rid == 2'b10;
     //IMMU
     assign request[3] = INCLUDE_MMUS ? immu_input.request : 0;
     assign addr[3] = INCLUDE_MMUS ? immu_input.addr : 'x;
