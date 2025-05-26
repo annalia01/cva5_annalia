@@ -71,7 +71,7 @@ module fp_madd_wrapper
     assign fma_advance = ~fma_valid_r | add_issue_decode_input.ready;
 
     assign mul_issue_decode_output.new_request = ~args.add & issue_input.new_request;
-    assign mul_issue_decode_output.id = issue__input.id;
+    assign mul_issue_decode_output.id = issue_input.id;
     fp_mul #(.CONFIG(CONFIG)) mul_core (
         .mul_args(args.mul_args),
         .fma(args.fma),
