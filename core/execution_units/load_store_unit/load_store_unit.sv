@@ -466,7 +466,7 @@ module load_store_unit
         assign is_load = issue_attr.is_load & ~(issue_attr.is_amo & issue_attr.amo_type != AMO_LR_FN5);
 
         always_ff @(posedge clk) begin
-            exception_lsq_push <= issue.new_request & ((unaligned_addr & ~issue_attr.is_fence & ~issue_attr.is_cbo) | illegal_cbo);
+            exception_lsq_push <= issue_input.new_request & ((unaligned_addr & ~issue_attr.is_fence & ~issue_attr.is_cbo) | illegal_cbo);
             if (issue_input.new_request) begin
                 rd_zero_r <= issue_attr.rd_zero;
                 exception_is_fp <= CONFIG.INCLUDE_UNIT.FPU & issue_attr.is_fpu;
@@ -868,7 +868,7 @@ module load_store_unit
     assign wb_output.id = exception_output.valid & ~exception_is_store ? exception_id : wb_attr.id;
 
     assign fp_wb_output.rd = fp_result;
-    assign fp_wb_output.done = (load_complete & (wb_attr.fp_op == SINGLE_DONE | wb_attr.fp_op == DOUBLE_DONE)) | (exception.valid & exception_is_fp & ~exception_is_store);
+    assign fp_wb_output.done = (load_complete & (wb_attr.fp_op == SINGLE_DONE | wb_attr.fp_op == DOUBLE_DONE)) | (exception_output.valid & exception_is_fp & ~exception_is_store);
     assign fp_wb_output.id = exception_output.valid & ~exception_is_store ? exception_id : wb_attr.id;
 
     ////////////////////////////////////////////////////
