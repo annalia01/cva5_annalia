@@ -194,9 +194,9 @@ typedef struct packed {
 } master_ro_mem_interface_output;
 
 typedef struct packed {
-    logic ack;
-    logic rvalid;
-    logic [31:0] rdata;
+    logic request;
+    logic [31:2] addr;
+    logic  [4:0] rlen;
 } slave_ro_mem_interface_input;
 
 typedef struct packed {
