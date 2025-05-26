@@ -74,52 +74,60 @@ module cva5
     ////////////////////////////////////////////////////
     //Connecting Signals
     //mem_interface dcache_mem();
-    master_ro_mem_interface_input dcache_mem_input_master_ro;
-    master_ro_mem_interface_output dcache_mem_output_master_ro;
-    slave_ro_mem_interface_input dcache_mem_input_slave_ro;
-    slave_ro_mem_interface_output dcache_mem_output_slave_ro;
-    master_rw_mem_interface_input dcache_mem_input_master_rw;
-    master_rw_mem_interface_output dcache_mem_output_master_rw;
-    slave_rw_mem_interface_input dcache_mem_input_slave_rw;
-    slave_rw_mem_interface_output dcache_mem_output_slave_rw;
-    master_mem_mem_interface_input dcache_mem_input_master_mem;
-    master_mem_mem_interface_output dcache_mem_output_master_mem;
+    master_ro_mem_interface_input dcache_mem_master_ro_input;
+    master_ro_mem_interface_output dcache_mem_master_ro_output;
+    slave_ro_mem_interface_input dcache_mem_slave_ro_input;
+    slave_ro_mem_interface_output dcache_mem_slave_ro_output;
+    master_rw_mem_interface_input dcache_mem_master_rw_input;
+    master_rw_mem_interface_output dcache_mem_master_rw_output;
+    slave_rw_mem_interface_input dcache_mem_slave_rw_input;
+    slave_rw_mem_interface_output dcache_mem_slave_rw_output;
+    master_mem_mem_interface_input dcache_mem_master_mem_input;
+    master_mem_mem_interface_output dcache_mem_master_mem_output;
+    slave_mem_mem_interface_input dcache_mem_slave_mem_input;
+    slave_mem_mem_interface_input dcache_mem_slave_mem_output;
     
     //mem_interface icache_mem();
-    master_ro_mem_interface_input icache_mem_input_master_ro;
-    master_ro_mem_interface_output icache_mem_output_master_ro;
-    slave_ro_mem_interface_input icache_mem_input_slave_ro;
-    slave_ro_mem_interface_output icache_mem_output_slave_ro;
-    master_rw_mem_interface_input icache_mem_input_master_rw;
-    master_rw_mem_interface_output icache_mem_output_master_rw;
-    slave_rw_mem_interface_input icache_mem_input_slave_rw;
-    slave_rw_mem_interface_output icache_mem_output_slave_rw;
-    master_mem_mem_interface_input icache_mem_input_master_mem;
-    master_mem_mem_interface_output icache_mem_output_master_mem;
+    master_ro_mem_interface_input icache_mem_master_ro_input;
+    master_ro_mem_interface_output icache_mem_master_ro_output;
+    slave_ro_mem_interface_input icache_mem_slave_ro_input;
+    slave_ro_mem_interface_output icache_mem_slave_ro_output;
+    master_rw_mem_interface_input icache_mem_master_rw_input;
+    master_rw_mem_interface_output icache_mem_master_rw_output;
+    slave_rw_mem_interface_input icache_mem_slave_rw_input;
+    slave_rw_mem_interface_output icache_mem_slave_rw_output;
+    master_mem_mem_interface_input icache_mem_master_mem_input;
+    master_mem_mem_interface_output icache_mem_master_mem_output;
+    slave_mem_mem_interface_input icache_mem_slave_mem_input;
+    slave_mem_mem_interface_input icache_mem_slave_mem_output;
     
     //mem_interface dmmu_mem();
-    master_ro_mem_interface_input dmmu_mem_input_master_ro;
-    master_ro_mem_interface_output dmmu_mem_output_master_ro;
-    slave_ro_mem_interface_input dmmu_mem_input_slave_ro;
-    slave_ro_mem_interface_output dmmu_mem_output_slave_ro;
-    master_rw_mem_interface_input dmmu_mem_input_master_rw;
-    master_rw_mem_interface_output dmmu_mem_output_master_rw;
-    slave_rw_mem_interface_input dmmu_mem_input_slave_rw;
-    slave_rw_mem_interface_output dmmu_mem_output_slave_rw;
-    master_mem_mem_interface_input dmmu_mem_input_master_mem;
-    master_mem_mem_interface_output dmmu_mem_output_master_mem;
+    master_ro_mem_interface_input dmmu_mem_master_ro_input;
+    master_ro_mem_interface_output dmmu_mem_master_ro_output;
+    slave_ro_mem_interface_input dmmu_mem_slave_ro_input;
+    slave_ro_mem_interface_output dmmu_mem_slave_ro_output;
+    master_rw_mem_interface_input dmmu_mem_master_rw_input;
+    master_rw_mem_interface_output dmmu_mem_master_rw_output;
+    slave_rw_mem_interface_input dmmu_mem_slave_rw_input;
+    slave_rw_mem_interface_output dmmu_mem_slave_rw_output;
+    master_mem_mem_interface_input dmmu_mem_master_mem_input;
+    master_mem_mem_interface_output dmmu_mem_master_mem_output;
+    slave_mem_mem_interface_input dmmu_mem_slave_mem_input;
+    slave_mem_mem_interface_input dmmu_mem_slave_mem_output;
     
     //mem_interface immu_mem();
-    master_ro_mem_interface_input immu_mem_input_master_ro;
-    master_ro_mem_interface_output immu_mem_output_master_ro;
-    slave_ro_mem_interface_input immu_mem_input_slave_ro;
-    slave_ro_mem_interface_output immu_mem_output_slave_ro;
-    master_rw_mem_interface_input immu_mem_input_master_rw;
-    master_rw_mem_interface_output immu_mem_output_master_rw;
-    slave_rw_mem_interface_input immu_mem_input_slave_rw;
-    slave_rw_mem_interface_output immu_mem_output_slave_rw;
-    master_mem_mem_interface_input immu_mem_input_master_mem;
-    master_mem_mem_interface_output immu_mem_output_master_mem;
+    master_ro_mem_interface_input immu_mem_master_ro_input;
+    master_ro_mem_interface_output immu_mem_master_ro_output;
+    slave_ro_mem_interface_input immu_mem_slave_ro_input;
+    slave_ro_mem_interface_output immu_mem_slave_ro_output;
+    master_rw_mem_interface_input immu_mem_master_rw_input;
+    master_rw_mem_interface_output immu_mem_master_rw_output;
+    slave_rw_mem_interface_input immu_mem_slave_rw_input;
+    slave_rw_mem_interface_output immu_mem_slave_rw_output;
+    master_mem_mem_interface_input immu_mem_master_mem_input;
+    master_mem_mem_interface_output immu_mem_master_mem_output;
+    slave_mem_mem_interface_input immu_mem_slave_mem_input;
+    slave_mem_mem_interface_input immu_mem_slave_mem_output;
     
     //branch_predictor_interface bp();
     branch_predictor_branch_predictor_input bp_branch_predictor_input;
@@ -322,16 +330,16 @@ module cva5
         arb(
             .clk (clk),
             .rst (rst),
-            .dcache_input (dcache_mem_input_slave_rw),
-            .dcache_output (dcache_mem_output_slave_rw),
-            .icache_input (icache_mem_input_slave_ro),
-            .icache_output (icache_mem_output_slave_ro),
-            .dmmu_input (dmmu_mem_input_slave_ro),
-            .dmmu_output (dmmu_mem_output_slave_ro),
-            .immu_input (immu_mem_input_slave_ro),
-            .immu_output (immu_mem_output_slave_ro),
-            .mem_input (immu_mem_input_master_ro),
-            .mem_output (immu_mem_output_master_ro)
+            .dcache_input (dcache_mem_slave_rw_input),
+            .dcache_output (dcache_mem_slave_rw_output),
+            .icache_input (icache_mem_slave_ro_input),
+            .icache_output (icache_mem_slave_ro_output),
+            .dmmu_input (dmmu_mem_slave_ro_input),
+            .dmmu_output (dmmu_mem_slave_ro_output),
+            .immu_input (immu_mem_slave_ro_input),
+            .immu_output (immu_mem_slave_ro_output),
+            .mem_input (immu_mem_master_ro_input),
+            .mem_output (immu_mem_master_ro_output)
         );
     end
     endgenerate
@@ -405,8 +413,8 @@ module cva5
         .icache_on ('1),
         .tlb_input (itlb_tlb_input),
         .tlb_output (itlb_tlb_output),
-        .mem_input  (icache_mem_input_master_mem),
-        .mem_output (icache_mem_output_master_mem)
+        .mem_input  (icache_mem_master_mem_input),
+        .mem_output (icache_mem_master_mem_output)
     );
 
     branch_predictor #(.CONFIG(CONFIG))
@@ -450,8 +458,8 @@ module cva5
             .mmu_input (immu_mmu_input),
             .mmu_output (immu_mmu_output),
             .abort_request (gc.fetch_flush | early_branch_flush),
-            .mem_input (immu_mem_input_master_ro),
-            .mem_output (immu_mem_output_master_ro)
+            .mem_input (immu_mem_master_ro_input),
+            .mem_output (immu_mem_master_ro_output)
         );
 
         end
@@ -609,8 +617,8 @@ module cva5
         .clear_reservation (1'b0),
         .tlb_input (dtlb_requester_input),
         -tlb_output (dtlb_requester_output),
-        .mem_input (dcache_mem_input_master_rw),
-        .mem_output (dcache_mem_output_master_rw),
+        .mem_input (dcache_mem_master_rw_input),
+        .mem_output (dcache_mem_master_rw_output),
         .m_axi_input (m_axi_input),
         .m_axi_output (m_axi_output),
         .m_avalon_input (m_avalon_input),
@@ -654,8 +662,8 @@ module cva5
             .mmu_input (dmmu_mmu_input),
             .mmu_output (dmmu_mmu_output),
             .abort_request (1'b0),
-            .mem_input (dmmu_mem_input_master_ro),
-            .mem_output (dmmu_mem_output_master_ro)
+            .mem_input (dmmu_mem_master_ro_input),
+            .mem_output (dmmu_mem_master_ro_output)
         );
     end
     endgenerate
