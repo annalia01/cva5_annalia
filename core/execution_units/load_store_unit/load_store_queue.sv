@@ -151,8 +151,8 @@ module load_store_queue //ID-based input buffer for Load/Store Unit
 
     //FIFO control signals
     assign lq_enqueue_output.push = lsq_input.push & lsq_input.data_in.load;
-    assign lq_enqueue_output.potential_push = lsq.potential_push;
-    assign lq_dequeue.pop = load_pop | lq_addr_discard;
+    assign lq_enqueue_output.potential_push = lsq_input.potential_push;
+    assign lq_dequeue_output.pop = load_pop | lq_addr_discard;
 
     assign lq_addr_enqueue_output.push = lsq_input.addr_push & lsq_input.addr_data_in.rnw;
     assign lq_addr_enqueue_output.potential_push = lq_addr_structure_input.push;
@@ -307,13 +307,13 @@ module load_store_queue //ID-based input buffer for Load/Store Unit
     end
     endgenerate
 
-    assign load_blocked = (lq.data_out.store_collision & (lq.data_out.sq_index != sq_oldest));
+    assign load_blocked = (lq_dequeue_input.data_out.store_collision & (lq_dequeue_input.data_out.sq_index != sq_oldest));
 
     //Requests are only valid if the TLB has returned the physical address and there was no exception
     assign lsq_output.load_valid = lq_dequeue_input.valid & ~load_blocked & (lq_addr_dequeue_input.valid ? ~lq_addr_dequeue_input.data_out.discard : lsq_input.addr_push & lsq_input.addr_data_in.rnw & ~lsq_input.addr_data_in.discard);
     assign lsq_output.store_valid = sq_ls_input.valid & (sq_addr_dequeue_input.valid ? ~sq_addr_dequeue_input.data_out.discard : lsq_input.addr_push & ~lsq_input.addr_data_in.rnw & ~lsq_input.addr_data_in.discard);
 
-    assign lsq.load_data_out = '{
+    assign lsq_output.load_data_out = '{
         addr : {(lq_addr_dequeue_input.valid ? lq_addr_dequeue_input.data_out.addr : lsq_input.addr_data_in.addr), lq_dequeue_input.data_out.offset[11:3], load_addr_bit_3, lq_dequeue_input.data_out.offset[1:0]},
         load : 1,
         store : 0,
@@ -335,7 +335,7 @@ module load_store_queue //ID-based input buffer for Load/Store Unit
         cache_op : sq_ls_input.data_out.cache_op,
         amo : 0,
         amo_type : amo_t'('x),
-        be : sq.data_out.be,
+        be : sq_ls_input.data_out.be,
         fn3 : 'x,
         subunit : sq_addr_dequeue_input.valid ? sq_addr_dequeue_input.data_out.subunit : lsq_input.addr_data_in.subunit,
         data_in : store_data,
