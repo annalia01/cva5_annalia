@@ -178,7 +178,7 @@ module fp_div
     
     always_ff @(posedge clk) begin
         if (issue_input.new_request) begin
-            wb_output.id <= issue.id;
+            wb_output.id <= issue_output.id;
             wb_output.rm <= args.rm;
             wb_output.d2s <= args.single;
         end
