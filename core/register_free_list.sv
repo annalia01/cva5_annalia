@@ -67,7 +67,7 @@ module register_free_list
     end
 
     assign fifo_output.valid = inflight_count[LOG2_FIFO_DEPTH];
-    assign fifo_output.full = fifo_input.valid & ~|inflight_count[LOG2_FIFO_DEPTH-1:0];
+    assign fifo_output.full = fifo_output.valid & ~|inflight_count[LOG2_FIFO_DEPTH-1:0];
 
     always_ff @ (posedge clk) begin
         if (rst) begin
