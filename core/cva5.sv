@@ -338,8 +338,8 @@ module cva5
             .dmmu_output (dmmu_mem_slave_ro_output),
             .immu_input (immu_mem_slave_ro_input),
             .immu_output (immu_mem_slave_ro_output),
-            .mem_input (immu_mem_master_ro_input),
-            .mem_output (immu_mem_master_ro_output)
+            .mem_input (immu_mem_master_mem_input),
+            .mem_output (immu_mem_master_mem_output)
         );
     end
     endgenerate
