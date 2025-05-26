@@ -64,7 +64,7 @@ module amo_unit
         assign op[i] = agents_input[i].op;
         assign rs1[i] = agents_input[i].rs1;
         assign rs2[i] = agents_input[i].rs2;
-        assign agents_input[i].rd = rd;
+        assign agents_output[i].rd = rd;
     end endgenerate
 
     ////////////////////////////////////////////////////
