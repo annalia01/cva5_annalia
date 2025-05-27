@@ -292,7 +292,7 @@ module icache
     ////////////////////////////////////////////////////
     //Assertions
     icache_l1_arb_ack_assertion:
-    assert property (@(posedge clk) disable iff (rst) mem_input.ack |-> mem_input.request)
+    assert property (@(posedge clk) disable iff (rst) mem_input.ack |-> mem_output.request)
         else $error("Spurious icache ack received from arbiter!");
 
     icache_l1_arb_data_valid_assertion:
