@@ -224,7 +224,7 @@ module fetch
     //TLB
     assign tlb_output.virtual_address = pc;
     assign tlb_output.rnw = 1;
-    assign tlb_output.new_request = tlb.ready & pc_id_available & ~fetch_attr_fifo_enqueue_input.full & (~exception_pending) & (~gc.fetch_hold);
+    assign tlb_output.new_request = tlb_input.ready & pc_id_available & ~fetch_attr_fifo_enqueue_input.full & (~exception_pending) & (~gc.fetch_hold);
 
     //////////////////////////////////////////////
     //Issue Control Signals
@@ -357,7 +357,7 @@ module fetch
             end
         end
 
-        assign sub_unit_address_match[ICACHE_ID] = icache_addr_utils.address_range_check(tlb.physical_address);
+        assign sub_unit_address_match[ICACHE_ID] = icache_addr_utils.address_range_check(tlb_input.physical_address);
         icache #(.CONFIG(CONFIG))
         i_cache (
             .clk (clk), 
