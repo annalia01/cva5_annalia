@@ -74,7 +74,7 @@ module mmu
 
     //Page Table addresses
     always_ff @ (posedge clk) begin
-        if (state[IDLE] | (mem.rvalid & ~discard_data)) begin
+        if (state[IDLE] | (mem_input.rvalid & ~discard_data)) begin
             if (state[IDLE])
                 mem_output.addr <= {mmu_input.satp_ppn[19:0], mmu_input.virtual_address[31:22]};
             else
@@ -169,7 +169,7 @@ module mmu
             mmu_output.superpage <= state[WAIT_REQUEST_1];
             mmu_output.perms.d <= pte.perms.d;
             mmu_output.perms.a <= pte.perms.a;
-            mmu_output.perms.g <= pte.perms.g | (state[WAIT_REQUEST_2] & mmu_input.perms.g);
+            mmu_output.perms.g <= pte.perms.g | (state[WAIT_REQUEST_2] & mmu_output.perms.g);
             mmu_output.perms.u <= pte.perms.u;
             mmu_output.perms.x <= pte.perms.x;
             mmu_output.perms.w <= pte.perms.w;
