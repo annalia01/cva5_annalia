@@ -200,7 +200,7 @@ module csr_unit
         writes : ~((issue_stage.fn3[1:0] != CSR_RW) & (issue_rs_addr[RS1] == 0))
     };
     
-    assign issue.ready = ~busy;
+    assign issue_output.ready = ~busy;
 
     always_ff @(posedge clk) begin
         if (rst)
@@ -756,6 +756,7 @@ generate if (CONFIG.MODES == MSU) begin : gen_csr_s_mode
     assign immu_output.satp_ppn = satp.ppn;
     assign dmmu_output.satp_ppn = satp.ppn;
     ////////////////////////////////////////////////////
+
 
     ////////////////////////////////////////////////////
     //SEPC
