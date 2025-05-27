@@ -192,7 +192,7 @@ module div_unit
     logic div_ready;
     assign div_ready = (~in_progress) | wb_input.ack;
 
-    assign input_fifo.data_in = '{
+    assign input_fifo_enqueue_output.data_in = '{
         unsigned_dividend : unsigned_dividend,
         unsigned_divisor : unsigned_divisor,
         dividend_CLZ : divisor_is_zero ? '0 : dividend_CLZ,
