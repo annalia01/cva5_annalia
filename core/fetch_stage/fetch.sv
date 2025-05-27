@@ -110,10 +110,10 @@ module fetch
     
 
     //memory_sub_unit_interface sub_unit[NUM_SUB_UNITS-1:0]();
-    controller_memory_sub_unit_interface_input sub_unit_controller_input[NUM_SUB_UNITS-1:0],
-    controller_memory_sub_unit_interface_output sub_unit_controller_output[NUM_SUB_UNITS-1:0],
-    responder_memory_sub_unit_interface_input sub_unit_responder_input[NUM_SUB_UNITS-1:0],
-    responder_memory_sub_unit_interface_output sub_unit_responder_output[NUM_SUB_UNITS-1:0],
+    controller_memory_sub_unit_interface_input sub_unit_controller_input[NUM_SUB_UNITS-1:0];
+    controller_memory_sub_unit_interface_output sub_unit_controller_output[NUM_SUB_UNITS-1:0];
+    responder_memory_sub_unit_interface_input sub_unit_responder_input[NUM_SUB_UNITS-1:0];
+    responder_memory_sub_unit_interface_output sub_unit_responder_output[NUM_SUB_UNITS-1:0];
 
     //amo_interface unused();
     subunit_amo_interface_input unused_subunit_input;
