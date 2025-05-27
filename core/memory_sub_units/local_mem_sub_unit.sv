@@ -68,7 +68,7 @@ module local_mem_sub_unit
 
     always_comb begin
         if (rmw) begin
-            unit.ready = 0;
+            unit_output.ready = 0;
             local_mem_output.addr = rmw_addr;
             local_mem_output.en = 1;
             local_mem_output.be = '1;
@@ -78,7 +78,7 @@ module local_mem_sub_unit
             unit_output.ready = 1;
             local_mem_output.addr = unit_input.addr[31:2];
             local_mem_output.en = unit_input.new_request;
-            local_mem_output.be = {4{unit.we | sc_valid}} & unit_input.be; //SC only writes when it succeeds
+            local_mem_output.be = {4{unit_input.we | sc_valid}} & unit_input.be; //SC only writes when it succeeds
             local_mem_output.data_in = unit_input.data_in;
             unit_output.data_out = sc_valid_r ? 32'b1 : local_mem_input.data_out;
         end
