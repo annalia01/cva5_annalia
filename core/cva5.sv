@@ -543,7 +543,7 @@ module cva5
         .decode_uses_rd (decode_uses_rd),
         .decode_rd_addr (decode_rd_addr),
         .rf_issue_input (rf_issue_register_file_input),
-        -rf_issue_output (rf_issue_register_file_output),
+        .rf_issue_output (rf_issue_register_file_output),
         .commit (wb_packet),
         .wb_phys_addr (wb_phys_addr)
     );
@@ -566,7 +566,7 @@ module cva5
         .issue_output (unit_issue_unit_output[BR_ID]),
         .br_results (br_results),
         .branch_flush (branch_flush),
-        .exception_output (exception[BR_EXCEPTION])
+        .exception_output (exception_output[BR_EXCEPTION])
     );
 
 
@@ -608,7 +608,7 @@ module cva5
         .issue_rd_wb_group (issue_rd_wb_group),
         .fp_issue_rd_wb_group (fp_issue_rd_wb_group),
         .rs2_inuse (rf_issue_issue_input.inuse[RS2]),
-        .fp_rs2_inuse (fp_ rf_issue_issue_input.inuse[RS2]),
+        .fp_rs2_inuse (fp_rf_issue_issue_input.inuse[RS2]),
         .rf (rf_issue_issue_input.data),
         .fp_rf (fp_rf_issue_issue_input.data),
         .issue_input (unit_issue_unit_input[LS_ID]),
@@ -616,7 +616,7 @@ module cva5
         .dcache_on (1'b1),
         .clear_reservation (1'b0),
         .tlb_input (dtlb_requester_input),
-        -tlb_output (dtlb_requester_output),
+        .tlb_output (dtlb_requester_output),
         .mem_input (dcache_mem_master_rw_input),
         .mem_output (dcache_mem_master_rw_output),
         .m_axi_input (m_axi_input),
@@ -865,7 +865,7 @@ module cva5
             .decode_uses_rd (fp_decode_uses_rd),
             .decode_rd_addr ('x),
             .rf_issue_input (fp_rf_issue_register_file_input),
-            -rf_issue_output (fp_rf_issue_register_file_output),
+            .rf_issue_output (fp_rf_issue_register_file_output),
             .commit (fp_wb_packet),
             .wb_phys_addr (fp_wb_phys_addr)
         );
