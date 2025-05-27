@@ -22,7 +22,7 @@
 
     import cva5_config::*;
 
-typedef struct packed {
+typedef struct {
     logic arvalid;
     logic [31:0] araddr;
     logic [7:0] arlen;
@@ -51,7 +51,7 @@ typedef struct packed {
     logic bready;
 } master_axi_interface_output;
 
-typedef struct packed {
+typedef struct {
     logic arready;
 
     logic rvalid;
@@ -68,7 +68,7 @@ typedef struct packed {
     logic [5:0] bid;
 } master_axi_interface_input;
 
-typedef struct packed {
+typedef struct {
     logic arvalid;
     logic [31:0] araddr;
     logic [7:0] arlen;
@@ -97,7 +97,7 @@ typedef struct packed {
     logic bready;
 } slave_axi_interface_input;
 
-typedef struct packed {
+typedef struct {
     logic arready;
 
     logic rvalid;
@@ -115,14 +115,14 @@ typedef struct packed {
 } slave_axi_interface_output;
 
 
-typedef struct packed {
+typedef struct {
     logic [31:0] readdata;
     logic waitrequest;
     logic readdatavalid;
     logic writeresponsevalid;
 } master_avalon_interface_input;
 
-typedef struct packed {
+typedef struct {
     logic [31:0] addr;
     logic read;
     logic write;
@@ -131,7 +131,7 @@ typedef struct packed {
     logic [31:0] writedata;
 } master_avalon_interface_output;
 
-typedef struct packed {
+typedef struct {
     logic [31:0] addr;
     logic read;
     logic write;
@@ -140,14 +140,14 @@ typedef struct packed {
     logic [31:0] writedata;
 } slave_avalon_interface_input;
 
-typedef struct packed {
+typedef struct {
     logic [31:0] readdata;
     logic waitrequest;
     logic readdatavalid;
     logic writeresponsevalid;
 } slave_avalon_interface_output;
 
-typedef struct packed {
+typedef struct {
     logic [29:0] adr;
     logic [31:0] dat_w;
     logic [3:0] sel;
@@ -158,13 +158,13 @@ typedef struct packed {
     logic [1:0] bte;
 } master_wishbone_interface_output;
 
-typedef struct packed {
+typedef struct {
     logic [31:0] dat_r;
     logic ack;
     logic err;
 }  master_wishbone_interface_input;
 
-typedef struct packed {
+typedef struct {
     logic [29:0] adr;
     logic [31:0] dat_w;
     logic  [3:0] sel;
@@ -175,37 +175,37 @@ typedef struct packed {
     logic [1:0] bte;
 } slave_wishbone_interface_input;
 
-typedef struct packed {
+typedef struct {
     logic [31:0] dat_r;
     logic ack;
     logic err;
 } slave_wishbone_interface_output;
 
-typedef struct packed {
+typedef struct {
     logic        ack;
     logic        rvalid;
     logic [31:0] rdata;
 } master_ro_mem_interface_input;
 
-typedef struct packed {
+typedef struct {
     logic request;
     logic [31:2] addr;
     logic  [4:0] rlen;
 } master_ro_mem_interface_output;
 
-typedef struct packed {
+typedef struct {
     logic request;
     logic [31:2] addr;
     logic  [4:0] rlen;
 } slave_ro_mem_interface_input;
 
-typedef struct packed {
+typedef struct {
     logic        ack;
     logic        rvalid;
     logic [31:0] rdata;
 } slave_ro_mem_interface_output;
 
-typedef struct packed {
+typedef struct {
     logic        ack;
     logic        rvalid;
     logic [31:0] rdata;
@@ -214,7 +214,7 @@ typedef struct packed {
     logic        write_outstanding;
 } master_rw_mem_interface_input;
 
-typedef struct packed {
+typedef struct {
     logic        request;
     logic [31:2] addr;
     logic  [4:0] rlen;
@@ -224,7 +224,7 @@ typedef struct packed {
     logic [31:0] wdata;
 } master_rw_mem_interface_output;
 
-typedef struct packed {
+typedef struct {
     logic        request;
     logic [31:2] addr;
     logic  [4:0] rlen;
@@ -234,7 +234,7 @@ typedef struct packed {
     logic [31:0] wdata;
 } slave_rw_mem_interface_input;
 
-typedef struct packed {
+typedef struct {
     logic        ack;
     logic        rvalid;
     logic [31:0] rdata;
@@ -243,7 +243,7 @@ typedef struct packed {
     logic        write_outstanding;
 } slave_rw_mem_interface_output;
 
-typedef struct packed {
+typedef struct {
     logic        ack;
     logic        rvalid;
     logic [31:0] rdata;
@@ -253,7 +253,7 @@ typedef struct packed {
     logic        write_outstanding;
 } master_mem_mem_interface_input;
 
-typedef struct packed {
+typedef struct {
     logic        request;
     logic [31:2] addr;
     logic  [4:0] rlen;
@@ -264,7 +264,7 @@ typedef struct packed {
     logic  [1:0] id;
 } master_mem_mem_interface_output;
 
-typedef struct packed {
+typedef struct {
     logic        request;
     logic [31:2] addr;
     logic  [4:0] rlen;
@@ -275,7 +275,7 @@ typedef struct packed {
     logic  [1:0] id;
 } slave_mem_mem_interface_input;
 
-typedef struct packed {
+typedef struct {
     logic        ack;
     logic        rvalid;
     logic [31:0] rdata;
@@ -285,26 +285,24 @@ typedef struct packed {
     logic        write_outstanding;
 } slave_mem_mem_interface_output;
 
-typedef struct packed {
+typedef struct {
     logic [31:0] data_out;
 } master_local_memory_interface_input;
 
-typedef struct packed {
+typedef struct {
     logic [29:0] addr;
     logic        en;
     logic  [3:0] be;
     logic [31:0] data_in;
 } master_local_memory_interface_output;
 
-typedef struct packed {
+typedef struct {
     logic [29:0] addr;
     logic        en;
     logic  [3:0] be;
     logic [31:0] data_in;
 } slave_local_memory_interface_input;
 
-typedef struct packed {
+typedef struct {
     logic [31:0] data_out;
 } slave_local_memory_interface_output;
-
-
