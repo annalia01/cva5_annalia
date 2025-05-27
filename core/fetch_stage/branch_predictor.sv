@@ -148,7 +148,7 @@ module branch_predictor
                 .a_wbe(target_update_way[i]),
                 .a_wdata(br_results.target_pc),
                 .a_addr(addr_utils_getHashedLineAddr(br_results.pc, i)),
-                .b_en(bp.new_mem_request),
+                .b_en(bp_input.new_mem_request),
                 .b_addr(addr_utils_getHashedLineAddr(bp_input.next_pc, i)),
                 .b_rdata(predicted_pc[i]),
             .*);
@@ -190,9 +190,9 @@ module branch_predictor
     lutram_1w_1r #(.DATA_TYPE(branch_metadata_t), .DEPTH(MAX_IDS))
     branch_metadata_table (
         .clk(clk),
-        .waddr(bp.pc_id),
+        .waddr(bp_input.pc_id),
         .raddr(br_results.id),
-        .ram_write(bp.pc_id_assigned),
+        .ram_write(bp_input.pc_id_assigned),
         .new_ram_data('{
             branch_predictor_metadata : if_entry[hit_way].metadata,
             branch_prediction_used : use_predicted_pc,
