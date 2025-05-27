@@ -73,8 +73,8 @@
     unit_unit_issue_interface_output intermediate_issue_unit_output[4:0];
     unit_unit_writeback_interface_input intermediate_issue_writeback_input[4:0];
     unit_unit_writeback_interface_output intermediate_issue_writeback_output[4:0];
-    decode_unit_issue_interface_input intermediate_issue_decode_input[4:0],
-    decode_unit_issue_interface_output intermediate_issue_decode_output[4:0],
+  decode_unit_issue_interface_input intermediate_issue_decode_input[4:0];
+  decode_unit_issue_interface_output intermediate_issue_decode_output[4:0];
   
     //fp_intermediate_wb_interface intermediate_unit_wb[3:0](); //FMADD, FMUL, FDIV/FSQRT, WB2FP
     fp_intermediate_wb_interface_unit_input intermediate_unit_wb_unit_input[3:0];
@@ -267,7 +267,7 @@
         .issue_input(intermediate_issue_unit_input[3]),
         .issue_output(intermediate_issue_unit_output[3]),
         .wb_input(intermediate_unit_wb_unit_input[3]),
-        .wb_output(intermediate_unit_wb_unit_output[3]),
+        .wb_output(intermediate_unit_wb_unit_output[3])
     );
 
     fp_wb2int_misc wb2int_misc_inst (
