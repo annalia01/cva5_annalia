@@ -133,7 +133,7 @@ module fp_div
     assign {result_hidden, result_frac, result_gr} = div_requester_input.quotient;
     fp_div_core div_core (
         .div_input(div_divider_input),
-        .div_output(div_divider_output)
+        .div_output(div_divider_output),
     .*);
 
     //Calculate CLZ: because 0.5 < result < 2, the shift amount is either 0 or 1
