@@ -69,8 +69,8 @@ module wishbone_master
     assign amo_unit_output.set_reservation = ls_input.new_request & amo & amo_type == AMO_LR_FN5;
     assign amo_unit_output.clear_reservation = ls_input.new_request;
     assign amo_unit_output.reservation = ls_input.addr;
-    assign amo_unit_output.rs1 = ls_input.data_out;
-    assign amo_unit_output.rs2 = wishbone_input.dat_w;
+    assign amo_unit_output.rs1 = ls_output.data_out;
+    assign amo_unit_output.rs2 = wishbone_output.dat_w;
 
     assign wishbone_output.cti = '0;
     assign wishbone_output.bte = '0;
@@ -88,7 +88,7 @@ module wishbone_master
                 wishbone_output.we <= ls_input.we;
                 wishbone_output.stb <= ls_input.new_request & ~request_is_sc;
                 wishbone_output.cyc <= ls_input.new_request & ~request_is_sc;
-                write_outstanding <= ls_input.new_request & (ls.we | amo);
+                write_outstanding <= ls_input.new_request & (ls_input.we | amo);
                 amo_unit_output.rmw_valid <= 0;
                 amo_unit_output.op <= amo_type;
                 cyc_counter <= amo ? 1 : 0;
@@ -100,10 +100,10 @@ module wishbone_master
             REQUESTING : begin //Wait for response
                 ls_output.ready <= wishbone_input.ack;
                 ls_output.data_out <= wishbone_input.dat_r;
-                ls_output.data_valid <= ~wishbone_input.we & wishbone_input.ack;
+                ls_output.data_valid <= ~wishbone_output.we & wishbone_input.ack;
                 wishbone_output.stb <= ~wishbone_input.ack;
                 wishbone_output.cyc <= ~wishbone_input.ack | cyc_counter[0];
-                write_outstanding <= wishbone_input.we & ~wishbone_input.ack;
+                write_outstanding <= wishbone_output.we & ~wishbone_input.ack;
                 if (wishbone_input.ack)
                     current_state <= cyc_counter[0] ? READY_LR : READY;
             end
@@ -143,22 +143,22 @@ module wishbone_master
                     ls_output.data_out <= {31'b0, ~amo_unit_input.reservation_valid};
                     ls_output.data_valid <= ls_input.new_request & request_is_sc;
                     wishbone_output.adr[31:2] <= ls_input.addr[31:2];
-                    wishbone_output.sel <= ls_input.we ? ls.be : '1;
+                    wishbone_output.sel <= ls_input.we ? ls_input.be : '1;
                     wishbone_output.dat_w <= ls_input.data_in;
                     wishbone_output.we <= ls_input.we | request_is_sc;
                     wishbone_output.stb <= ls_input.new_request & ~(request_is_sc & ~amo_unit.reservation_valid);
-                    write_outstanding <= ls_input.new_request & (ls.we | amo);
+                    write_outstanding <= ls_input.new_request & (ls_input.we | amo);
                     amo_unit_output.rmw_valid <= 0;
                     amo_unit_output.op <= amo_type;
 
-                    if (ls.new_request)
+                    if (ls_input.new_request)
                         wishbone_output.cyc <= ~(request_is_sc & ~amo_unit_input.reservation_valid);
                     else if (32'(cyc_counter) == LR_WAIT-1)
                         wishbone_output.cyc <= 0;
 
                     cyc_counter <= cyc_counter + 1;
 
-                    if (ls.new_request & (~amo | amo_type == AMO_LR_FN5))
+                    if (ls_input.new_request & (~amo | amo_type == AMO_LR_FN5))
                         current_state <= REQUESTING;
                     else if (ls_input.new_request & amo & amo_type != AMO_SC_FN5)
                         current_state <= REQUESTING_AMO_R;
