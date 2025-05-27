@@ -79,7 +79,7 @@ module fp_madd_wrapper
         .issue_input(mul_issue_unit_input),
         .issue_output(mul_issue_unit_output),
         .wb_input(mul_wb_input),
-        -wb_output(mul_wb_output),
+        .wb_output(mul_wb_output),
         .add_ready(fma_advance),
         .add_valid(fma_valid),
         .add_id(fma_id),
@@ -114,7 +114,7 @@ module fp_madd_wrapper
         .issue(add_issue_unit_input),
         .issue_output(add_issue_unit_output),
         .wb_input(madd_wb_input),
-        .wb_output(madd_wb_output)
+        .wb_output(madd_wb_output),
     .*);
 
     assign issue_output.ready = (~args.add & mul_issue_unit_output.ready) | (args.add & add_issue_unit_output.ready & ~fma_valid_r);
