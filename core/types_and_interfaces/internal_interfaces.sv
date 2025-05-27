@@ -22,7 +22,7 @@
 import cva5_types::*;
 import csr_types::*;
 import riscv_types::*;
-
+parameter type DATA_TYPE = logic;
 typedef struct {
     logic [31:0] if_pc;
     id_t         if_id;
