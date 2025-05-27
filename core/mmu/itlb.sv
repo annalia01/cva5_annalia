@@ -254,7 +254,7 @@ module itlb
             request_in_progress <= 0;
         else if (mmu_input.write_entry | mmu_input.is_fault | abort_request)
             request_in_progress <= 0;
-        else if (mmu_input.request)
+        else if (mmu_output.request)
             request_in_progress <= 1;
     end
 
