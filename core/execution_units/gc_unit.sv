@@ -59,7 +59,7 @@ module gc_unit
         //exception_interface.unit local_gc_exception,
         unit_exception_output local_gc_exception_output,
         
-        //exception_interface.econtrol exception [NUM_EXCEPTION_SOURCES],
+        //exception_interface.econtrol exception[NUM_EXCEPTION_SOURCES],
         econtrol_exception_interface_input exception_input[NUM_EXCEPTION_SOURCES],
         input logic [31:0] exception_target_pc,
 
@@ -259,7 +259,7 @@ module gc_unit
         gc_fetch_hold <= next_state inside {PRE_CLEAR_STATE, INIT_CLEAR_STATE, PRE_ISSUE_FLUSH, TLB_CLEAR_STATE, WAIT_WRITE};
         gc_issue_hold <= next_state inside {PRE_CLEAR_STATE, INIT_CLEAR_STATE, WAIT_INTERRUPT, PRE_ISSUE_FLUSH, TLB_CLEAR_STATE, WAIT_WRITE};
         gc_init_clear <= next_state inside {INIT_CLEAR_STATE};
-        gc_fetch_ifence <= issue.new_request & is_ifence;
+        gc_fetch_ifence <= issue_input.new_request & is_ifence;
         gc_tlb_flush <= next_state inside {INIT_CLEAR_STATE, TLB_CLEAR_STATE};
     end
     //work-around for verilator BLKANDNBLK signal optimizations
