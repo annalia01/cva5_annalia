@@ -726,7 +726,7 @@ module load_store_unit
                     .rst (rst),
                     .write_outstanding (unit_write_outstanding[BUS_ID]),
                     .wishbone_input (dwishbone_input),
-                    .wishbone_output (dwishbone_output)
+                    .wishbone_output (dwishbone_output),
                     .amo (shared_inputs.amo),
                     .amo_type (shared_inputs.amo_type),
                     .amo_unit_input (amo_if_subunit_input[BUS_ID]),
@@ -803,7 +803,7 @@ module load_store_unit
             .RESERVATION_WORDS(CONFIG.AMO_UNIT.RESERVATION_WORDS)
         ) amo_inst (
             .agents_input(amo_if_amo_unit_input),
-            .agents_output(amo_if_amo_unit_output)
+            .agents_output(amo_if_amo_unit_output),
         .*);
     end endgenerate
 
