@@ -492,7 +492,7 @@ typedef struct {
 } register_file_register_file_issue_interface_output;
 
 typedef struct {
-    logic [DATA_WIDTH:0] data [READ_PORTS];
+    logic [DATA_WIDTH-1:0] data [READ_PORTS];
     logic inuse [READ_PORTS];
 } issue_register_file_issue_interface_input;
 
