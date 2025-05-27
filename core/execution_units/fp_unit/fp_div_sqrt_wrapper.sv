@@ -65,7 +65,7 @@ module fp_div_sqrt_wrapper
         .issue_input(div_issue_input),
         .issue_output(div_issue_output),
         .wb_input(div_wb_unit_input),
-        .wb_output(div_wb_unit_output)
+        .wb_output(div_wb_unit_output),
     .*);
 
     fp_sqrt sqrt (
