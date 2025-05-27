@@ -23,7 +23,7 @@ import cva5_types::*;
 import csr_types::*;
 import riscv_types::*;
 
-typedef struct packed {
+typedef struct {
     logic [31:0] if_pc;
     id_t         if_id;
     logic        new_mem_request;
@@ -32,7 +32,7 @@ typedef struct packed {
     logic        pc_id_assigned;
 } branch_predictor_branch_predictor_input;
 
-typedef struct packed {
+typedef struct {
     logic [31:0] branch_flush_pc;
     logic [31:0] predicted_pc;
     logic        use_prediction;
@@ -41,7 +41,7 @@ typedef struct packed {
     logic        is_branch;
 } branch_predictor_branch_predictor_output;
 
-typedef struct packed {
+typedef struct {
     logic [31:0] branch_flush_pc;
     logic [31:0] predicted_pc;
     logic        use_prediction;
@@ -59,54 +59,54 @@ typedef struct packed {
     logic        pc_id_assigned;
 } fetch_branch_predictor_output;
 
-typedef struct packed {
+typedef struct {
     logic        ready;
 } decode_unit_issue_interface_input;
 
-typedef struct packed {
+typedef struct {
     logic        possible_issue;
     logic        new_request;
     id_t         id;
 } decode_unit_issue_interface_output;
 
-typedef struct packed {
+typedef struct {
     logic        possible_issue;
     logic        new_request;
     id_t         id;
 } unit_unit_issue_interface_input;
 
-typedef struct packed {
+typedef struct {
     logic        ready;
 } unit_unit_issue_interface_output;
 
 parameter DATA_WIDTH = 32;
 parameter NUM_WB_GROUPS = 3;
 parameter READ_PORTS = 2;
-typedef struct packed {
+typedef struct {
     logic ack;
 } unit_unit_writeback_interface_input;
 
-typedef struct packed {
+typedef struct {
     logic done;
     id_t id;
     logic [DATA_WIDTH-1:0] rd;
 } unit_unit_writeback_interface_output;
 
-typedef struct packed {
+typedef struct {
     logic done;
     id_t id;
     logic [DATA_WIDTH-1:0] rd;
 } wb_unit_writeback_interface_input;
 
-typedef struct packed {
+typedef struct {
     logic ack;
 } wb_unit_writeback_interface_output;
 
-typedef struct packed {
+typedef struct {
     logic branch_retired;
 } branch_predictor_ras_interface_output;
 
-typedef struct packed {
+typedef struct {
     logic push;
     logic pop;
     logic [31:0] new_addr;
@@ -114,22 +114,22 @@ typedef struct packed {
     logic branch_retired;
 } self_ras_interface_input;
 
-typedef struct packed {
+typedef struct {
     logic [31:0] addr;
 } self_ras_interface_output;
 
-typedef struct packed {
+typedef struct {
     logic [31:0] addr;
 } fetch_ras_interface_input;
 
-typedef struct packed {
+typedef struct {
     logic pop;
     logic push;
     logic [31:0] new_addr;
     logic branch_fetched;
 } fetch_ras_interface_output;
 
-typedef struct packed {
+typedef struct {
     logic valid;
     logic possible;
     exception_code_t code;
@@ -138,7 +138,7 @@ typedef struct packed {
     logic discard;
 } unit_exception_output;
 
-typedef struct packed {
+typedef struct {
     logic valid;
     logic possible;
     exception_code_t code;
@@ -147,39 +147,39 @@ typedef struct packed {
     logic discard;
 } econtrol_exception_interface_input;
 
-typedef struct packed {
+typedef struct {
     logic full;
 } enqueue_fifo_interface_input;
 
-typedef struct packed {
+typedef struct {
     DATA_TYPE data_in;
     logic push;
     logic potential_push;
 } enqueue_fifo_interface_output;
 
-typedef struct packed {
+typedef struct {
     logic valid;
     DATA_TYPE data_out;
 } dequeue_fifo_interface_input;
 
-typedef struct packed {
+typedef struct {
     logic pop;
 } dequeue_fifo_interface_output;
 
-typedef struct packed {
+typedef struct {
     logic push;
     logic pop;
     DATA_TYPE data_in;
     logic potential_push;
 } structure_fifo_interface_input;
 
-typedef struct packed {
+typedef struct {
     DATA_TYPE data_out;
     logic valid;
     logic full;
 } structure_fifo_interface_output;
 
-typedef struct packed {
+typedef struct {
     logic [31:0] virtual_address;
     logic request;
     logic execute;
@@ -190,7 +190,7 @@ typedef struct packed {
     privilege_t privilege;
 } mmu_mmu_interface_input;
 
-typedef struct packed {
+typedef struct {
     logic write_entry;
     logic superpage;
     pte_perms_t perms;
@@ -198,7 +198,7 @@ typedef struct packed {
     logic is_fault;
 } mmu_mmu_interface_output;
 
-typedef struct packed {
+typedef struct {
     logic write_entry;
     logic superpage;
     pte_perms_t perms;
@@ -209,47 +209,47 @@ typedef struct packed {
     privilege_t privilege;
 } tlb_mmu_interface_input;
 
-typedef struct packed {
+typedef struct {
     logic request;
     logic [31:0] virtual_address;
     logic execute;
     logic rnw;
 } tlb_mmu_interface_output;
 
-typedef struct packed {
+typedef struct {
     logic [21:0] satp_ppn;
     logic mxr;
     logic sum;
     privilege_t privilege;
 } csr_mmu_interface_output;
 
-typedef struct packed {
+typedef struct {
     logic new_request;
     logic [31:0] virtual_address;
     logic rnw;
 } tlb_tlb_interface_input;
 
-typedef struct packed {
+typedef struct {
     logic ready;
     logic done;
     logic is_fault;
     logic [31:0] physical_address;
 } tlb_tlb_interface_output;
 
-typedef struct packed {
+typedef struct {
     logic new_request;
     logic [31:0] virtual_address;
     logic rnw;
 } requester_tlb_interface_output;
 
-typedef struct packed {
+typedef struct {
     logic ready;
     logic done;
     logic is_fault;
     logic [31:0] physical_address;
 } requester_tlb_interface_input;
 
-typedef struct packed {
+typedef struct {
     lsq_entry_t data_in;
     logic potential_push;
     logic push;
@@ -259,7 +259,7 @@ typedef struct packed {
     lsq_addr_entry_t addr_data_in;
 } ls_load_store_queue_interface_output;
 
-typedef struct packed {
+typedef struct {
     logic full;
     data_access_shared_inputs_t load_data_out;
     data_access_shared_inputs_t store_data_out;
@@ -269,7 +269,7 @@ typedef struct packed {
     logic empty;
 } ls_load_store_queue_interface_input;
 
-typedef struct packed {
+typedef struct {
     lsq_entry_t data_in;
     logic potential_push;
     logic push;
@@ -279,7 +279,7 @@ typedef struct packed {
     lsq_addr_entry_t addr_data_in;
 } queue_load_store_queue_interface_input;
 
-typedef struct packed {
+typedef struct {
     logic full;
     data_access_shared_inputs_t load_data_out;
     data_access_shared_inputs_t store_data_out;
@@ -289,26 +289,26 @@ typedef struct packed {
     logic empty;
 } queue_load_store_queue_interface_output;
 
-typedef struct packed {
+typedef struct {
     lsq_entry_t data_in;
     logic push;
     logic pop;
 } ls_store_queue_interface_output;
 
-typedef struct packed {
+typedef struct {
     logic full;
     sq_entry_t data_out;
     logic valid;
     logic empty;
 } ls_store_queue_interface_input;
 
-typedef struct packed {
+typedef struct {
     lsq_entry_t data_in;
     logic push;
     logic pop;
 } queue_store_queue_interface_input;
 
-typedef struct packed {
+typedef struct {
     logic full;
     sq_entry_t data_out;
     logic valid;
@@ -349,7 +349,7 @@ endpackage
 
 package addr_utils_pkg;
 
-    typedef struct packed {
+    typedef struct {
         logic [31:0] base_addr;
         logic [31:0] upper_bound;
     } addr_range_t;
@@ -368,7 +368,7 @@ package addr_utils_pkg;
 endpackage
 
 
-typedef struct packed {
+typedef struct {
     logic new_request;
     logic [31:0] addr;
     logic re;
@@ -377,7 +377,7 @@ typedef struct packed {
     logic [31:0] data_in;
 } controller_memory_sub_unit_interface_output;
 
-typedef struct packed {
+typedef struct {
     logic [31:0] data_out;
     logic data_valid;
     logic ready;
@@ -389,7 +389,7 @@ typedef struct packed {
     logic ready;
 } responder_memory_sub_unit_interface_output;
 
-typedef struct packed {
+typedef struct {
     logic new_request;
     logic [31:0] addr;
     logic re;
@@ -399,13 +399,13 @@ typedef struct packed {
 } responder_memory_sub_unit_interface_input;
 
 // unsigned_division_interface
-typedef struct packed {
+typedef struct {
     logic [DATA_WIDTH-1:0] remainder;
     logic [DATA_WIDTH-1:0] quotient;
     logic done;
 } unsigned_division_interface_requester_input;
 
-typedef struct packed {
+typedef struct {
     logic [DATA_WIDTH-1:0] dividend;
     logic [$clog2(DATA_WIDTH)-1:0] dividend_CLZ;
     logic [DATA_WIDTH-1:0] divisor;
@@ -414,13 +414,13 @@ typedef struct packed {
     logic start;
 } unsigned_division_interface_requester_output;
 
-typedef struct packed {
+typedef struct {
     logic [DATA_WIDTH-1:0] remainder;
     logic [DATA_WIDTH-1:0] quotient;
     logic done;
 } unsigned_division_interface_divider_output;
 
-typedef struct packed {
+typedef struct {
     logic [DATA_WIDTH-1:0] dividend;
     logic [$clog2(DATA_WIDTH)-1:0] dividend_CLZ;
     logic [DATA_WIDTH-1:0] divisor;
@@ -429,29 +429,29 @@ typedef struct packed {
     logic start;
 } unsigned_division_interface_divider_input;
 
-typedef struct packed {
+typedef struct {
     logic [DATA_WIDTH-1:0] remainder;
     logic [DATA_WIDTH-1:0] result;
     logic done;
 } unsigned_sqrt_interface_requester_input;
 
-typedef struct packed {
+typedef struct {
     logic [DATA_WIDTH-1:0] radicand;
     logic start;
 } unsigned_sqrt_interface_requester_output;
 
-typedef struct packed {
+typedef struct {
     logic [DATA_WIDTH-1:0] remainder;
     logic [DATA_WIDTH-1:0] result;
     logic done;
 } unsigned_sqrt_interface_sqrt_output;
 
-typedef struct packed {
+typedef struct {
     logic [DATA_WIDTH-1:0] radicand;
     logic start;
 } unsigned_sqrt_interface_sqrt_input;
 
-typedef struct packed {
+typedef struct {
     rs_addr_t rd_addr;
     rs_addr_t rs_addr [READ_PORTS];
     logic [$clog2(NUM_WB_GROUPS)-1:0] rd_wb_group;
@@ -459,19 +459,19 @@ typedef struct packed {
     id_t id;
 } renamer_renamer_interface_input;
 
-typedef struct packed {
+typedef struct {
     phys_addr_t phys_rs_addr [READ_PORTS];
     logic [$clog2(NUM_WB_GROUPS)-1:0] rs_wb_group [READ_PORTS];
     phys_addr_t phys_rd_addr;
 } renamer_renamer_interface_output;
 
-typedef struct packed {
+typedef struct {
     phys_addr_t phys_rs_addr [READ_PORTS];
     logic [$clog2(NUM_WB_GROUPS)-1:0] rs_wb_group [READ_PORTS];
     phys_addr_t phys_rd_addr;
 } decode_renamer_interface_input;
 
-typedef struct packed {
+typedef struct {
     rs_addr_t rd_addr;
     rs_addr_t rs_addr [READ_PORTS];
     logic [$clog2(NUM_WB_GROUPS)-1:0] rd_wb_group;
@@ -479,35 +479,35 @@ typedef struct packed {
     id_t id;
 } decode_renamer_interface_output;
  
-typedef struct packed {
+typedef struct {
     phys_addr_t phys_rs_addr [READ_PORTS];
     phys_addr_t phys_rd_addr;
     logic single_cycle_or_flush;
     logic [$clog2(NUM_WB_GROUPS)-1:0] rs_wb_group [READ_PORTS];
 } register_file_register_file_issue_interface_input;
 
-typedef struct packed {
+typedef struct {
     logic [DATA_WIDTH-1:0] data [READ_PORTS];
     logic inuse [READ_PORTS];
 } register_file_register_file_issue_interface_output;
 
-typedef struct packed {
+typedef struct {
     logic [DATA_WIDTH:0] data [READ_PORTS];
     logic inuse [READ_PORTS];
 } issue_register_file_issue_interface_input;
 
-typedef struct packed {
+typedef struct {
     phys_addr_t phys_rs_addr [2];
     phys_addr_t phys_rd_addr;
     logic single_cycle_or_flush;
     logic [$clog2(3)-1:0] rs_wb_group [2];
 } issue_register_file_issue_interface_output;
 
-typedef struct packed {
+typedef struct {
     logic ack;
 } fp_intermediate_wb_interface_unit_input;
 
-typedef struct packed {
+typedef struct {
     id_t id;
     logic done;
     fp_t rd;
@@ -526,11 +526,11 @@ typedef struct packed {
     logic d2s;
 } fp_intermediate_wb_interface_unit_output;
 
-typedef struct packed {
+typedef struct {
     logic ack;
 } fp_intermediate_wb_interface_wb_output;
 
-typedef struct packed {
+typedef struct {
     id_t id;
     logic done;
     fp_t rd;
@@ -549,12 +549,12 @@ typedef struct packed {
     logic d2s;
 } fp_intermediate_wb_interface_wb_input;
 
-typedef struct packed {
+typedef struct {
     logic reservation_valid;
     logic [31:0] rd;
 } subunit_amo_interface_input;
 
-typedef struct packed {
+typedef struct {
     logic set_reservation;
     logic clear_reservation;
     logic [31:0] reservation;
@@ -564,7 +564,7 @@ typedef struct packed {
     logic [31:0] rs2;
 } subunit_amo_interface_output;
 
-typedef struct packed {
+typedef struct {
     logic set_reservation;
     logic clear_reservation;
     logic [31:0] reservation;
@@ -574,7 +574,7 @@ typedef struct packed {
     logic [31:0] rs2;
 } amo_unit_amo_interface_input;
 
-typedef struct packed {
+typedef struct {
     logic reservation_valid;
     logic [31:0] rd;
 } amo_unit_amo_interface_output;
