@@ -28,7 +28,24 @@ package riscv_types;
     localparam ECODE_W = 5;
 
     typedef logic [4:0] rs_addr_t;
-
+    typedef struct packed{
+        logic [XLEN-1:0] unsigned_dividend;
+        logic [XLEN-1:0] unsigned_divisor;
+        logic [$clog2(32)-1:0] dividend_CLZ;
+        logic [$clog2(32)-1:0] divisor_CLZ;
+        logic divisor_is_zero;
+        logic reuse_result;
+        div_attributes_t attr;
+    } div_fifo_inputs_t;
+    
+     typedef struct packed{
+        logic is_predicted_branch_or_jump;
+        logic is_branch;
+        logic [31:0] early_flush_pc;
+        logic address_valid;
+        logic mmu_fault;
+        logic [NUM_SUB_UNITS_W-1:0] subunit_id;
+    } fetch_attributes_t;
     typedef struct packed {
         logic [6:0] fn7;
         logic [4:0] rs2_addr;
