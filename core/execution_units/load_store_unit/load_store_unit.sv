@@ -29,7 +29,7 @@ module load_store_unit
     import csr_types::*;
     import opcodes::*;
     import addr_utils_pkg::*;
-    import fifo_structs_pkg::*;
+    
     
     # (
         parameter cpu_config_t CONFIG = EXAMPLE_CONFIG,
@@ -237,11 +237,11 @@ module load_store_unit
     //fifo_interface #(.DATA_TYPE(load_attributes_t)) load_attributes();
 
     enqueue_fifo_interface_input load_attributes_enqueue_input;
-    enqueue_fifo_interface_output load_attributes_enqueue_output;
-    dequeue_fifo_interface_input load_attributes_dequeue_input;
+    enqueue_fifo_interface_output_load_attributes load_attributes_enqueue_output;
+    dequeue_fifo_interface_input_load_attributes load_attributes_dequeue_input;
     dequeue_fifo_interface_output load_attributes_dequeue_output;
-    structure_fifo_interface_input load_attributes_structure_input;
-    structure_fifo_interface_output load_attributes_structure_output;
+    structure_fifo_interface_input_load_attributes load_attributes_structure_input;
+    structure_fifo_interface_output_load_attributes load_attributes_structure_output;
     
 
     //load_store_queue_interface lsq();
@@ -672,8 +672,8 @@ assign load_attributes_enqueue_output.data_in.fp_op = lsq_ls_input.load_data_out
     attributes_fifo (
         .clk (clk),
         .rst (rst), 
-        .fifo_input (load_attributes_structure_input),
-        .fifo_output (load_attributes_structure_output)
+        .fifo_input_load_attributes (load_attributes_structure_input),
+        .fifo_output_load_attributes (load_attributes_structure_output)
     );
 
     assign load_attributes_dequeue_output.pop = load_complete;
