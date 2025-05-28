@@ -73,12 +73,12 @@ module div_unit # (
 
     logic divisor_is_zero;
 
-    typedef struct packed{
+    /*typedef struct packed{
         logic remainder_op;
         logic negate_result;
         id_t id;
     } div_attributes_t;
-    div_attributes_t wb_attr;
+    
 
     typedef struct packed{
         logic [XLEN-1:0] unsigned_dividend;
@@ -88,7 +88,8 @@ module div_unit # (
         logic divisor_is_zero;
         logic reuse_result;
         div_attributes_t attr;
-    } div_fifo_inputs_t;
+    } div_fifo_inputs_t;*/
+div_attributes_t wb_attr;
 
     //unsigned_division_interface #(.DATA_WIDTH(32)) div_core();
     unsigned_division_interface_requester_output div_core_requester_output;
