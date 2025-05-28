@@ -150,7 +150,7 @@ typedef struct {
 } econtrol_exception_interface_input;
 
 
-package fifo_structs_pkg;
+/*package fifo_structs_pkg;
 
   parameter type DATA_TYPE = logic; // default generico, sovrascrivibile
 
@@ -186,8 +186,94 @@ package fifo_structs_pkg;
       logic full;
   } structure_fifo_interface_output;
 
-endpackage
+endpackage*/
+typedef struct {
+      div_fifo_inputs_t data_in;
+      logic push;
+      logic potential_push;
+  } enqueue_fifo_interface_output_div_fifo;
 
+  typedef struct {
+      logic valid;
+      div_fifo_inputs_t data_out;
+  } dequeue_fifo_interface_input_div_fifo;
+
+
+  typedef struct {
+      logic push;
+      logic pop;
+      div_fifo_inputs_t data_in;
+      logic potential_push;
+  } structure_fifo_interface_input_div_fifo;
+
+  typedef struct {
+      div_fifo_inputs_t data_out;
+      logic valid;
+      logic full;
+  } structure_fifo_interface_output_div_fifo;
+  
+  typedef struct {
+      logic pop;
+  } dequeue_fifo_interface_output;
+
+  typedef struct {
+      logic full;
+  } enqueue_fifo_interface_input;
+  
+  typedef struct {
+      fetch_attributes_t data_in;
+      logic push;
+      logic potential_push;
+  } enqueue_fifo_interface_output_fetch_attributes;
+
+  typedef struct {
+      logic valid;
+      fetch_attributes_t data_out;
+  } dequeue_fifo_interface_input_fetch_attributes;
+
+
+  typedef struct {
+      logic push;
+      logic pop;
+      fetch_attributes_t data_in;
+      logic potential_push;
+  } structure_fifo_interface_input_fetch_attributes;
+
+  typedef struct {
+      fetch_attributes_t data_out;
+      logic valid;
+      logic full;
+  } structure_fifo_interface_output_fetch_attributes;
+  
+  
+  typedef struct {
+      load_attributes_t data_in;
+      logic push;
+      logic potential_push;
+  } enqueue_fifo_interface_output_load_attributes;
+
+  typedef struct {
+      logic valid;
+      load_attributes_t data_out;
+  } dequeue_fifo_interface_input_load_attributes;
+
+
+  typedef struct {
+      logic push;
+      logic pop;
+      load_attributes_t data_in;
+      logic potential_push;
+  } structure_fifo_interface_input_load_attributes;
+
+  typedef struct {
+      load_attributes_t data_out;
+      logic valid;
+      logic full;
+  } structure_fifo_interface_output_load_attributes;
+  
+  
+  
+  
 typedef struct {
     logic [31:0] virtual_address;
     logic request;
