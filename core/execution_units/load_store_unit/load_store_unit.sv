@@ -29,9 +29,11 @@ module load_store_unit
     import csr_types::*;
     import opcodes::*;
     import addr_utils_pkg::*;
-
+    import fifo_structs_pkg::*;
+    
     # (
-        parameter cpu_config_t CONFIG = EXAMPLE_CONFIG
+        parameter cpu_config_t CONFIG = EXAMPLE_CONFIG,
+        parameter type DATA_TYPE = load_attributes_t
     )
 
     (
@@ -217,7 +219,7 @@ module load_store_unit
 
     id_t exception_id;
 
-    typedef struct packed{
+    /*typedef struct packed{
         logic is_signed;
         logic [1:0] byte_addr;
         logic [1:0] sign_sel;
@@ -225,7 +227,7 @@ module load_store_unit
         id_t id;
         logic [NUM_SUB_UNITS_W-1:0] subunit_id;
         fp_ls_op_t fp_op;
-    } load_attributes_t;
+    } load_attributes_t;*/
     load_attributes_t  wb_attr;
 
     common_instruction_t instruction;//rs1_addr, rs2_addr, fn3, fn7, rd_addr, upper/lower opcode
@@ -647,7 +649,7 @@ module load_store_unit
         endcase
     end
     
-    assign load_attributes_enqueue_output.data_in = '{
+    /*assign load_attributes_enqueue_output.data_in = '{
         is_signed : ~|lsq_ls_input.load_data_out.fn3[2:1],
         byte_addr : lsq_ls_input.load_data_out.addr[1:0],
         sign_sel : lsq_ls_input.load_data_out.addr[1:0] | {1'b0, lsq_ls_input.load_data_out.fn3[0]},//halfword
@@ -655,7 +657,14 @@ module load_store_unit
         id : lsq_ls_input.load_data_out.id,
         subunit_id : subunit_id,
         fp_op : lsq_ls_input.load_data_out.fp_op
-    };
+    };*/
+    assign load_attributes_enqueue_output.data_in.is_signed = ~|lsq_ls_input.load_data_out.fn3[2:1];
+assign load_attributes_enqueue_output.data_in.byte_addr = lsq_ls_input.load_data_out.addr[1:0];
+assign load_attributes_enqueue_output.data_in.sign_sel = lsq_ls_input.load_data_out.addr[1:0] | {1'b0, lsq_ls_input.load_data_out.fn3[0]}; // halfword
+assign load_attributes_enqueue_output.data_in.final_mux_sel = final_mux_sel;
+assign load_attributes_enqueue_output.data_in.id = lsq_ls_input.load_data_out.id;
+assign load_attributes_enqueue_output.data_in.subunit_id = subunit_id;
+assign load_attributes_enqueue_output.data_in.fp_op = lsq_ls_input.load_data_out.fp_op;
     assign load_attributes_enqueue_output.push = sub_unit_load_issue;
     assign load_attributes_enqueue_output.potential_push = load_attributes_structure_input.push;
     
