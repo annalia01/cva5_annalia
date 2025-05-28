@@ -387,7 +387,7 @@ module cva5
 
     ////////////////////////////////////////////////////
     // Fetch
-    fetch # (.CONFIG(CONFIG))
+    fetch # (.CONFIG(CONFIG), .DATA_TYPE(fetch_attributes_t))
     fetch_block (
         .clk (clk),
         .rst (rst),
@@ -767,7 +767,9 @@ module cva5
     end endgenerate
 
     generate if (CONFIG.INCLUDE_UNIT.DIV) begin : gen_div
-        div_unit div_unit_block (
+        div_unit #(
+        	.DATA_TYPE(div_fifo_inputs_t)
+        )div_unit_block (
             .clk (clk),
             .rst (rst),
             .gc (gc),
