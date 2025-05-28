@@ -22,7 +22,9 @@
 import cva5_types::*;
 import csr_types::*;
 import riscv_types::*;
+
 parameter type DATA_TYPE = logic;
+
 typedef struct {
     logic [31:0] if_pc;
     id_t         if_id;
@@ -147,37 +149,44 @@ typedef struct {
     logic discard;
 } econtrol_exception_interface_input;
 
-typedef struct {
-    logic full;
-} enqueue_fifo_interface_input;
 
-typedef struct {
-    DATA_TYPE data_in;
-    logic push;
-    logic potential_push;
-} enqueue_fifo_interface_output;
+package fifo_structs_pkg;
 
-typedef struct {
-    logic valid;
-    DATA_TYPE data_out;
-} dequeue_fifo_interface_input;
+  parameter type DATA_TYPE = logic; // default generico, sovrascrivibile
 
-typedef struct {
-    logic pop;
-} dequeue_fifo_interface_output;
+  typedef struct {
+      logic full;
+  } enqueue_fifo_interface_input;
 
-typedef struct {
-    logic push;
-    logic pop;
-    DATA_TYPE data_in;
-    logic potential_push;
-} structure_fifo_interface_input;
+  typedef struct {
+      DATA_TYPE data_in;
+      logic push;
+      logic potential_push;
+  } enqueue_fifo_interface_output;
 
-typedef struct {
-    DATA_TYPE data_out;
-    logic valid;
-    logic full;
-} structure_fifo_interface_output;
+  typedef struct {
+      logic valid;
+      DATA_TYPE data_out;
+  } dequeue_fifo_interface_input;
+
+  typedef struct {
+      logic pop;
+  } dequeue_fifo_interface_output;
+
+  typedef struct {
+      logic push;
+      logic pop;
+      DATA_TYPE data_in;
+      logic potential_push;
+  } structure_fifo_interface_input;
+
+  typedef struct {
+      DATA_TYPE data_out;
+      logic valid;
+      logic full;
+  } structure_fifo_interface_output;
+
+endpackage
 
 typedef struct {
     logic [31:0] virtual_address;
