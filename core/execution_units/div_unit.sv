@@ -19,14 +19,17 @@
  * Author(s):
  *             Eric Matthews <ematthew@sfu.ca>
  */
-
-module div_unit
-
-    import cva5_config::*;
+import cva5_config::*;
     import riscv_types::*;
     import cva5_types::*;
     import opcodes::*;
+    import fifo_structs_pkg::*;
+    
+module div_unit # (
 
+    
+    parameter type DATA_TYPE = div_fifo_inputs_t
+)
     (
         input logic clk,
         input logic rst,
@@ -52,6 +55,7 @@ module div_unit
         unit_unit_writeback_interface_input wb_input,
         unit_unit_writeback_interface_output wb_output
     );
+    
     common_instruction_t instruction;//rs1_addr, rs2_addr, fn3, fn7, rd_addr, upper/lower opcode
     logic mult_div_op;
 
@@ -192,10 +196,10 @@ module div_unit
     logic div_ready;
     assign div_ready = (~in_progress) | wb_input.ack;
 
-    assign input_fifo_enqueue_output.data_in = '{
+    /*assign input_fifo_enqueue_output.data_in = '{
         unsigned_dividend : unsigned_dividend,
         unsigned_divisor : unsigned_divisor,
-        dividend_CLZ : divisor_is_zero ? '0 : dividend_CLZ,
+        dividend_CLZ : divisor_is_zero ? 5'd0 : dividend_CLZ,
         divisor_CLZ : divisor_CLZ,
         divisor_is_zero : divisor_is_zero,
         reuse_result : div_op_reuse,
@@ -204,7 +208,16 @@ module div_unit
             negate_result : (issue_stage.fn3[1] ? negate_remainder : (negate_quotient & ~divisor_is_zero)),
             id : issue_input.id
         }
-    };
+    };*/
+    assign input_fifo_enqueue_output.data_in.unsigned_dividend = unsigned_dividend;
+    assign input_fifo_enqueue_output.data_in.unsigned_divisor = unsigned_divisor;
+    assign input_fifo_enqueue_output.data_in.dividend_CLZ = divisor_is_zero ? 5'd0 : dividend_CLZ;
+    assign input_fifo_enqueue_output.data_in.divisor_CLZ = divisor_CLZ;
+    assign input_fifo_enqueue_output.data_in.divisor_is_zero = divisor_is_zero;
+assign input_fifo_enqueue_output.data_in.reuse_result = div_op_reuse;
+	assign input_fifo_enqueue_output.data_in.attr.remainder_op = issue_stage.fn3[1];
+	assign input_fifo_enqueue_output.data_in.attr.negate_result = (issue_stage.fn3[1] ? negate_remainder : (negate_quotient & ~divisor_is_zero));
+	assign input_fifo_enqueue_output.data_in.attr.id = issue_input.id;
     assign input_fifo_enqueue_output.push = issue_input.new_request;
     assign input_fifo_enqueue_output.potential_push = issue_input.possible_issue;
     assign issue_output.ready = ~input_fifo_enqueue_input.full | (~in_progress);
