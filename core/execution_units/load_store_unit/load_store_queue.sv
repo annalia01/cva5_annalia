@@ -20,6 +20,7 @@
  *             Eric Matthews <ematthew@sfu.ca>
  */
 
+  
 module load_store_queue //ID-based input buffer for Load/Store Unit
 
     import cva5_config::*;
@@ -68,6 +69,64 @@ module load_store_queue //ID-based input buffer for Load/Store Unit
         logic [19:0] addr;
         ls_subunit_t subunit;
     } addr_entry_t;
+    
+    typedef struct {
+      logic full;
+  } enqueue_fifo_interface_input;
+
+  typedef struct {
+      lq_entry_t data_in;
+      logic push;
+      logic potential_push;
+  } enqueue_fifo_interface_output_lq_entry_t;
+
+  typedef struct {
+      logic valid;
+      lq_entry_t data_out;
+  } dequeue_fifo_interface_input_lq_entry_t;
+
+  typedef struct {
+      logic pop;
+  } dequeue_fifo_interface_output;
+
+  typedef struct {
+      logic push;
+      logic pop;
+      lq_entry_t data_in;
+      logic potential_push;
+  } structure_fifo_interface_input_lq_entry_t;
+
+  typedef struct {
+      lq_entry_t data_out;
+      logic valid;
+      logic full;
+  } structure_fifo_interface_output_lq_entry_t;
+  
+   
+  typedef struct {
+      addr_entry_t data_in;
+      logic push;
+      logic potential_push;
+  } enqueue_fifo_interface_output_addr_entry_t;
+
+  typedef struct {
+      logic valid;
+      addr_entry_t data_out;
+  } dequeue_fifo_interface_input_addr_entry_t;
+
+
+  typedef struct {
+      logic push;
+      logic pop;
+      addr_entry_t data_in;
+      logic potential_push;
+  } structure_fifo_interface_input_addr_entry_t;
+
+  typedef struct {
+      addr_entry_t data_out;
+      logic valid;
+      logic full;
+  } structure_fifo_interface_output_addr_entry_t;
 
     logic [LOG2_SQ_DEPTH-1:0] sq_index;
     logic [LOG2_SQ_DEPTH-1:0] sq_oldest;
@@ -88,19 +147,19 @@ module load_store_queue //ID-based input buffer for Load/Store Unit
 
     //fifo_interface #(.DATA_TYPE(lq_entry_t)) lq();
     enqueue_fifo_interface_input lq_enqueue_input;
-    enqueue_fifo_interface_output lq_enqueue_output;
-    dequeue_fifo_interface_input lq_dequeue_input;
+    enqueue_fifo_interface_output_lq_entry_t lq_enqueue_output;
+    dequeue_fifo_interface_input_lq_entry_t lq_dequeue_input;
     dequeue_fifo_interface_output lq_dequeue_output;
-    structure_fifo_interface_input lq_structure_input;
-    structure_fifo_interface_output lq_structure_output;
+    structure_fifo_interface_input_lq_entry_t lq_structure_input;
+    structure_fifo_interface_output_lq_entry_t lq_structure_output;
     
     fifo_interface #(.DATA_TYPE(addr_entry_t)) lq_addr();
     enqueue_fifo_interface_input lq_addr_enqueue_input;
-    enqueue_fifo_interface_output lq_addr_enqueue_output;
-    dequeue_fifo_interface_input lq_addr_dequeue_input;
+    enqueue_fifo_interface_output_addr_entry_t lq_addr_enqueue_output;
+    dequeue_fifo_interface_input_addr_entry_t lq_addr_dequeue_input;
     dequeue_fifo_interface_output lq_addr_dequeue_output;
-    structure_fifo_interface_input lq_addr_structure_input;
-    structure_fifo_interface_output lq_addr_structure_output;
+    structure_fifo_interface_input_addr_entry_t lq_addr_structure_input;
+    structure_fifo_interface_output_addr_entry_t lq_addr_structure_output;
     
     //store_queue_interface sq();
     ls_store_queue_interface_input sq_ls_input;
@@ -110,11 +169,11 @@ module load_store_queue //ID-based input buffer for Load/Store Unit
     
     //fifo_interface #(.DATA_TYPE(addr_entry_t)) sq_addr();
     enqueue_fifo_interface_input sq_addr_enqueue_input;
-    enqueue_fifo_interface_output sq_addr_enqueue_output;
-    dequeue_fifo_interface_input sq_addr_dequeue_input;
+    enqueue_fifo_interface_output_addr_entry_t sq_addr_enqueue_output;
+    dequeue_fifo_interface_input_addr_entry_t sq_addr_dequeue_input;
     dequeue_fifo_interface_output sq_addr_dequeue_output;
-    structure_fifo_interface_input sq_addr_structure_input;
-    structure_fifo_interface_output sq_addr_structure_output;
+    structure_fifo_interface_input_addr_entry_t sq_addr_structure_input;
+    structure_fifo_interface_output_addr_entry_t sq_addr_structure_output;
     
     ////////////////////////////////////////////////////
     //Implementation
@@ -164,7 +223,7 @@ module load_store_queue //ID-based input buffer for Load/Store Unit
     assign lq_addr_discard = lq_addr_dequeue_input.valid ? lq_addr_dequeue_input.data_out.discard : lsq_input.addr_push & lsq_input.addr_data_in.rnw & lsq_input.addr_data_in.discard;
 
     //FIFO data ports
-    assign lq_enqueue_output.data_in = '{
+    /*assign lq_enqueue_output.data_in = '{
         offset : lsq_input.data_in.offset,
         fn3 : lsq_input.data_in.fn3,
         fp : lsq_input.data_in.fp,
@@ -175,7 +234,17 @@ module load_store_queue //ID-based input buffer for Load/Store Unit
         id : lsq_input.data_in.id, 
         store_collision : potential_store_conflict | (CONFIG.INCLUDE_AMO & lsq_input.data_in.amo), //Collision forces sequential consistence
         sq_index : sq_index
-    };
+    };*/
+    assign lq_enqueue_output.data_in.offset = lsq_input.data_in.offset;
+assign lq_enqueue_output.data_in.fn3 = lsq_input.data_in.fn3;
+assign lq_enqueue_output.data_in.fp = lsq_input.data_in.fp;
+assign lq_enqueue_output.data_in.double = lsq_input.data_in.double;
+assign lq_enqueue_output.data_in.amo = lsq_input.data_in.amo;
+assign lq_enqueue_output.data_in.amo_type = lsq_input.data_in.amo_type;
+assign lq_enqueue_output.data_in.amo_wdata = lsq_input.data_in.data;
+assign lq_enqueue_output.data_in.id = lsq_input.data_in.id;
+assign lq_enqueue_output.data_in.store_collision = potential_store_conflict | (CONFIG.INCLUDE_AMO & lsq_input.data_in.amo);
+assign lq_enqueue_output.data_in.sq_index = sq_index;
     ////////////////////////////////////////////////////
     //Store Queue
     assign sq_enqueue_output.push = lsq_input.push & (lsq_input.data_in.store | lsq_input.data_in.cache_op);
@@ -313,7 +382,7 @@ module load_store_queue //ID-based input buffer for Load/Store Unit
     assign lsq_output.load_valid = lq_dequeue_input.valid & ~load_blocked & (lq_addr_dequeue_input.valid ? ~lq_addr_dequeue_input.data_out.discard : lsq_input.addr_push & lsq_input.addr_data_in.rnw & ~lsq_input.addr_data_in.discard);
     assign lsq_output.store_valid = sq_ls_input.valid & (sq_addr_dequeue_input.valid ? ~sq_addr_dequeue_input.data_out.discard : lsq_input.addr_push & ~lsq_input.addr_data_in.rnw & ~lsq_input.addr_data_in.discard);
 
-    assign lsq_output.load_data_out = '{
+    /*assign lsq_output.load_data_out = '{
         addr : {(lq_addr_dequeue_input.valid ? lq_addr_dequeue_input.data_out.addr : lsq_input.addr_data_in.addr), lq_dequeue_input.data_out.offset[11:3], load_addr_bit_3, lq_dequeue_input.data_out.offset[1:0]},
         load : 1,
         store : 0,
@@ -341,7 +410,33 @@ module load_store_queue //ID-based input buffer for Load/Store Unit
         data_in : store_data,
         id : 'x,
         fp_op : fp_ls_op_t'('x)
-    };
+    };*/
+    
+    assign lsq_output.load_data_out.addr = {(lq_addr_dequeue_input.valid ? lq_addr_dequeue_input.data_out.addr : lsq_input.addr_data_in.addr), lq_dequeue_input.data_out.offset[11:3], load_addr_bit_3, lq_dequeue_input.data_out.offset[1:0]};
+assign lsq_output.load_data_out.load = 1;
+assign lsq_output.load_data_out.store = 0;
+assign lsq_output.load_data_out.cache_op = 0;
+assign lsq_output.load_data_out.amo = lq_dequeue_input.data_out.amo;
+assign lsq_output.load_data_out.amo_type = lq_dequeue_input.data_out.amo_type;
+assign lsq_output.load_data_out.be = '1;
+assign lsq_output.load_data_out.fn3 = load_fn3;
+assign lsq_output.load_data_out.subunit = lq_addr_dequeue_input.valid ? lq_addr_dequeue_input.data_out.subunit : lsq_input.addr_data_in.subunit;
+assign lsq_output.load_data_out.data_in = CONFIG.INCLUDE_AMO ? lq_dequeue_input.data_out.amo_wdata : 'x;
+assign lsq_output.load_data_out.id = lq_dequeue_input.data_out.id;
+assign lsq_output.load_data_out.fp_op = load_type;
+
+assign lsq_output.store_data_out.addr = {(sq_addr_dequeue_input.valid ? sq_addr_dequeue_input.data_out.addr : lsq_input.addr_data_in.addr), sq_dequeue_input.data_out.offset[11:3], store_addr_bit_3, sq_ls_input.data_out.offset[1:0]};
+assign lsq_output.store_data_out.load = 0;
+assign lsq_output.store_data_out.store = 1;
+assign lsq_output.store_data_out.cache_op = sq_ls_input.data_out.cache_op;
+assign lsq_output.store_data_out.amo = 0;
+assign lsq_output.store_data_out.amo_type = amo_t'('x);
+assign lsq_output.store_data_out.be = sq_ls_input.data_out.be;
+assign lsq_output.store_data_out.fn3 = 'x;
+assign lsq_output.store_data_out.subunit = sq_addr_dequeue_input.valid ? sq_addr_dequeue_input.data_out.subunit : lsq_input.addr_data_in.subunit;
+assign lsq_output.store_data_out.data_in = store_data;
+assign lsq_output.store_data_out.id = 'x;
+assign lsq_output.store_data_out.fp_op = fp_ls_op_t'('x);
 
     assign lsq_output.sq_empty = sq_ls_input.empty;
     assign lsq_output.empty = ~lq_dequeue_input.valid & sq_ls_input.empty;
