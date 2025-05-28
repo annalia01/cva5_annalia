@@ -24,12 +24,13 @@ package cva5_types;
     import cva5_config::*;
     import riscv_types::*;
     import csr_types::*;
+    
 
     localparam LOG2_RETIRE_PORTS = $clog2(RETIRE_PORTS);
     localparam LOG2_MAX_IDS = $clog2(MAX_IDS);
     localparam MAX_LS_SUBUNITS = 3;
     localparam XLEN = 32;
-    localparam NUM_SUB_UNITS = int'(CONFIG.INCLUDE_ILOCAL_MEM) + int'(CONFIG.INCLUDE_ICACHE) + int'(CONFIG.INCLUDE_IBUS);
+    localparam NUM_SUB_UNITS = int'(EXAMPLE_CONFIG.INCLUDE_ILOCAL_MEM) + int'(EXAMPLE_CONFIG.INCLUDE_ICACHE) + int'(EXAMPLE_CONFIG.INCLUDE_IBUS);
     localparam NUM_SUB_UNITS_W = (NUM_SUB_UNITS == 1) ? 1 : $clog2(NUM_SUB_UNITS);
     
     
