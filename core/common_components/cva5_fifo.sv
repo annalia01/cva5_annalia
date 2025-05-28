@@ -25,7 +25,14 @@
  *  Intended for small FIFO depths.
  *  For continuous operation when full, enqueing side must inspect pop signal
  */
+ //import fifo_structs_pkg::*;
+ 
+
+
+
 module cva5_fifo
+
+
 
     #(
         parameter type DATA_TYPE = logic,
@@ -35,28 +42,54 @@ module cva5_fifo
         input logic clk,
         input logic rst,
         //fifo_interface.structure fifo
-        structure_fifo_interface_input fifo_input,
-        structure_fifo_interface_output fifo_output
+        structure_fifo_interface_input_div_fifo fifo_input_div_fifo,
+        structure_fifo_interface_output_div_fifo fifo_output_div_fifo,
+        structure_fifo_interface_input_fetch_attributes fifo_input_fetch_attributes,
+        structure_fifo_interface_output_fetch_attributes fifo_output_fetch_attributes,
+        structure_fifo_interface_input_load_attributes fifo_input_load_attributes,
+        structure_fifo_interface_output_load_attributes fifo_output_load_attributes
+        //structure_fifo_interface_input fifo_input,
+        //structure_fifo_interface_output fifo_output
     );
 
     localparam LOG2_FIFO_DEPTH = $clog2(FIFO_DEPTH);
+     
     ////////////////////////////////////////////////////
     //Implementation
     //If depth is one, the FIFO can be implemented with a single register
     generate if (FIFO_DEPTH == 1) begin : gen_width_one
         always_ff @ (posedge clk) begin
             if (rst)
-                fifo_output.valid <= 0;
+                //fifo_output.valid <= 0;
+                fifo_output_div_fifo.valid <= 0;
+                fifo_output_fetch_attributes.valid <= 0;
+                fifo_output_load_attributes.valid <=0;
             else if (fifo_input.push & ~fifo_input.pop)
-                fifo_output.valid <= 1;
+                fifo_output_div_fifo.valid <= 1;
+                fifo_output_fetch_attributes.valid <= 1;
+                fifo_output_load_attributes.valid <=1;
             else if (fifo_input.pop & ~fifo_input.push)
-                fifo_output.valid <= 0;
+                //fifo_output.valid <= 0;
+                fifo_output_div_fifo.valid <= 0;
+                fifo_output_fetch_attributes.valid <= 0;
+                fifo_output_load_attributes.valid <=0;
         end
-        assign fifo_output.full = fifo_output.valid;
+        //assign fifo_output.full = fifo_output.valid;
+        assign fifo_output_div_fifo.full = fifo_output_div_fifo.valid;
+        assign fifo_output_fetch_attributes.full = fifo_output_fetch_attributes.valid;
+        assign fifo_output_load_attributes.full = fifo_output_load_attributes.valid;
 
         always_ff @ (posedge clk) begin
-            if (fifo_input.potential_push)
-                fifo_output.data_out <= fifo_input.data_in;
+            if (fifo_input_div_fifo.potential_push)
+                fifo_output_div_fifo.data_out <= fifo_input_div_fifo.data_in;
+        end
+        always_ff @ (posedge clk) begin
+            if (fifo_input_load_attributes.potential_push)
+                fifo_output_load_attributes.data_out <= fifo_input_load_attributes.data_in;
+        end
+        always_ff @ (posedge clk) begin
+            if (fifo_input_fetch_attributes.potential_push)
+                fifo_output_fetch_attributes.data_out <= fifo_input_fetch_attributes.data_in;
         end
     end
     //If depth is two, the FIFO can be implemented with two registers
@@ -74,17 +107,39 @@ module cva5_fifo
                 inflight_count <= inflight_count + (LOG2_FIFO_DEPTH+1)'(fifo_input.pop) - (LOG2_FIFO_DEPTH+1)'(fifo_input.push);
         end
 
-        assign fifo_output.valid = inflight_count[LOG2_FIFO_DEPTH];
-        assign fifo_output.full = fifo_output.valid & ~|inflight_count[LOG2_FIFO_DEPTH-1:0];
+        assign fifo_output_div_fifo.valid = inflight_count[LOG2_FIFO_DEPTH];
+        assign fifo_output_load_attributes.valid = inflight_count[LOG2_FIFO_DEPTH];
+        assign fifo_output_fetch_attributes.valid = inflight_count[LOG2_FIFO_DEPTH];
+        
+        
+        assign fifo_output_div_fifo.full = fifo_output_div_fifo.valid & ~|inflight_count[LOG2_FIFO_DEPTH-1:0];
+        assign fifo_output_fetch_attributes.full = fifo_output_fetch_attributes.valid & ~|inflight_count[LOG2_FIFO_DEPTH-1:0];
+        assign fifo_output_load_attributes.full = fifo_output_load_attributes.valid & ~|inflight_count[LOG2_FIFO_DEPTH-1:0];
 
         always_ff @ (posedge clk) begin
-            if (fifo_input.push) begin
-                shift_reg[0] <= fifo_input.data_in;
+            if (fifo_input_div_fifo.push) begin
+                shift_reg[0] <= fifo_input_div_fifo.data_in;
+                shift_reg[1] <= shift_reg[0];
+            end
+        end
+        
+        always_ff @ (posedge clk) begin
+            if (fifo_input_fetch_attributes.push) begin
+                shift_reg[0] <= fifo_input_fetch_attributes.data_in;
+                shift_reg[1] <= shift_reg[0];
+            end
+        end
+        
+        always_ff @ (posedge clk) begin
+            if (fifo_input_load_attributes.push) begin
+                shift_reg[0] <= fifo_input_load_attributes.data_in;
                 shift_reg[1] <= shift_reg[0];
             end
         end
 
-        assign fifo_output.data_out = shift_reg[~inflight_count[0]];
+        assign fifo_output_div_fifo.data_out = shift_reg[~inflight_count[0]];
+        assign fifo_output_load_attributes.data_out = shift_reg[~inflight_count[0]];
+        assign fifo_output_fetch_attributes.data_out = shift_reg[~inflight_count[0]];
     end
     else begin : gen_width_3_plus
         logic [LOG2_FIFO_DEPTH-1:0] write_index;
@@ -96,22 +151,42 @@ module cva5_fifo
             if (rst)
                 inflight_count <= 0;
             else
-                inflight_count <= inflight_count + (LOG2_FIFO_DEPTH+1)'(fifo_input.pop) - (LOG2_FIFO_DEPTH+1)'(fifo_input.push);
+                inflight_count <= inflight_count + (LOG2_FIFO_DEPTH+1)'(fifo_input_div_fifo.pop) - (LOG2_FIFO_DEPTH+1)'(fifo_input_div_fifo.push);
+        end
+        
+        always_ff @ (posedge clk) begin
+            if (rst)
+                inflight_count <= 0;
+            else
+                inflight_count <= inflight_count + (LOG2_FIFO_DEPTH+1)'(fifo_input_fetch_attributes.pop) - (LOG2_FIFO_DEPTH+1)'(fifo_input_fetch_attributes.push);
+        end
+        
+        always_ff @ (posedge clk) begin
+            if (rst)
+                inflight_count <= 0;
+            else
+                inflight_count <= inflight_count + (LOG2_FIFO_DEPTH+1)'(fifo_input_load_attributes.pop) - (LOG2_FIFO_DEPTH+1)'(fifo_input_load_attributes.push);
         end
 
-        assign fifo_output.valid = inflight_count[LOG2_FIFO_DEPTH];
-        assign fifo_output.full = inflight_count == (LOG2_FIFO_DEPTH+1)'(-FIFO_DEPTH);
+        assign fifo_output_div_fifo.valid = inflight_count[LOG2_FIFO_DEPTH];
+        assign fifo_output_div_fifo.full = inflight_count == (LOG2_FIFO_DEPTH+1)'(-FIFO_DEPTH);
+        
+        assign fifo_output_load_attributes.valid = inflight_count[LOG2_FIFO_DEPTH];
+        assign fifo_output_load_attributes.full = inflight_count == (LOG2_FIFO_DEPTH+1)'(-FIFO_DEPTH);
+        
+        assign fifo_output_fetch_attributes.valid = inflight_count[LOG2_FIFO_DEPTH];
+        assign fifo_output_fetch_attributes.full = inflight_count == (LOG2_FIFO_DEPTH+1)'(-FIFO_DEPTH);
 
         lfsr #(.WIDTH(LOG2_FIFO_DEPTH), .NEEDS_RESET(1))
         lfsr_read_index (
             .clk (clk),.rst (rst),
-            .en(fifo_input.pop),
+            .en(fifo_input_div_fifo.pop),
             .value(read_index)
         );
         lfsr #(.WIDTH(LOG2_FIFO_DEPTH), .NEEDS_RESET(1))
         lfsr_write_index (
             .clk (clk), .rst (rst),
-            .en(fifo_input.push),
+            .en(fifo_input_div_fifo.push),
             .value(write_index)
         );
         //Force FIFO depth to next power of 2
@@ -120,20 +195,83 @@ module cva5_fifo
             .clk(clk),
             .waddr(write_index),
             .raddr(read_index),
-            .ram_write(fifo_input.potential_push),
-            .new_ram_data(fifo_input.data_in),
-            .ram_data_out(fifo_output.data_out)
+            .ram_write(fifo_input_div_fifo.potential_push),
+            .new_ram_data(fifo_input_div_fifo.data_in),
+            .ram_data_out(fifo_output_div_fifo.data_out)
         );
+        
+        
+        lfsr #(.WIDTH(LOG2_FIFO_DEPTH), .NEEDS_RESET(1))
+        lfsr_read_index (
+            .clk (clk),.rst (rst),
+            .en(fifo_input_load_attributes.pop),
+            .value(read_index)
+        );
+        lfsr #(.WIDTH(LOG2_FIFO_DEPTH), .NEEDS_RESET(1))
+        lfsr_write_index (
+            .clk (clk), .rst (rst),
+            .en(fifo_input_load_attributes.push),
+            .value(write_index)
+        );
+        //Force FIFO depth to next power of 2
+        lutram_1w_1r #(.DATA_TYPE(DATA_TYPE), .DEPTH(2**LOG2_FIFO_DEPTH))
+        write_port (
+            .clk(clk),
+            .waddr(write_index),
+            .raddr(read_index),
+            .ram_write(fifo_input_load_attributes.potential_push),
+            .new_ram_data(fifo_input_load_attributes.data_in),
+            .ram_data_out(fifo_output_load_attributes.data_out)
+        );
+        
+        
+        
+        lfsr #(.WIDTH(LOG2_FIFO_DEPTH), .NEEDS_RESET(1))
+        lfsr_read_index (
+            .clk (clk),.rst (rst),
+            .en(fifo_input_fetch_attributes.pop),
+            .value(read_index)
+        );
+        lfsr #(.WIDTH(LOG2_FIFO_DEPTH), .NEEDS_RESET(1))
+        lfsr_write_index (
+            .clk (clk), .rst (rst),
+            .en(fifo_input_fetch_attributes.push),
+            .value(write_index)
+        );
+        //Force FIFO depth to next power of 2
+        lutram_1w_1r #(.DATA_TYPE(DATA_TYPE), .DEPTH(2**LOG2_FIFO_DEPTH))
+        write_port (
+            .clk(clk),
+            .waddr(write_index),
+            .raddr(read_index),
+            .ram_write(fifo_input_fetch_attributes.potential_push),
+            .new_ram_data(fifo_input_fetch_attributes.data_in),
+            .ram_data_out(fifo_output_fetch_attributes.data_out)
+        );
+        
     end
     endgenerate
 
     ////////////////////////////////////////////////////
     //Assertions
     fifo_overflow_assertion:
-    assert property (@(posedge clk) disable iff (rst) fifo_input.push |-> (~fifo_output.full | fifo_input.pop)) else $error("overflow");
+    assert property (@(posedge clk) disable iff (rst) fifo_input_div_fifo.push |-> (~fifo_output_div_fifo.full | fifo_input_div_fifo.pop)) else $error("overflow");
     fifo_potenial_push_overflow_assertion:
-        assert property (@(posedge clk) disable iff (rst) fifo_input.potential_push |-> (~fifo_output.full | fifo_input.pop)) else $error("potential push overflow");
+        assert property (@(posedge clk) disable iff (rst) fifo_input_div_fifo.potential_push |-> (~fifo_output_div_fifo.full | fifo_input_div_fifo.pop)) else $error("potential push overflow");
     fifo_underflow_assertion:
-            assert property (@(posedge clk) disable iff (rst) fifo_input.pop |-> (fifo_output.valid | fifo_input.push)) else $error("underflow");
+            assert property (@(posedge clk) disable iff (rst) fifo_input_div_fifo.pop |-> (fifo_output_div_fifo.valid | fifo_input_div_fifo.push)) else $error("underflow");
 
+fifo_overflow_assertion:
+    assert property (@(posedge clk) disable iff (rst) fifo_input_load_attributes.push |-> (~fifo_output_load_attributes.full | fifo_input_load_attributes.pop)) else $error("overflow");
+    fifo_potenial_push_overflow_assertion:
+        assert property (@(posedge clk) disable iff (rst) fifo_input_load_attributes.potential_push |-> (~fifo_output_load_attributes.full | fifo_input_load_attributes.pop)) else $error("potential push overflow");
+    fifo_underflow_assertion:
+            assert property (@(posedge clk) disable iff (rst) fifo_input_load_attributes.pop |-> (fifo_output_load_attributes.valid | fifo_input_load_attributes.push)) else $error("underflow");
+            
+            fifo_overflow_assertion:
+    assert property (@(posedge clk) disable iff (rst) fifo_input_fetch_attributes.push |-> (~fifo_output_fetch_attributes.full | fifo_input_fetch_attributes.pop)) else $error("overflow");
+    fifo_potenial_push_overflow_assertion:
+        assert property (@(posedge clk) disable iff (rst) fifo_input_fetch_attributes.potential_push |-> (~fifo_output_fetch_attributes.full | fifo_input_fetch_attributes.pop)) else $error("potential push overflow");
+    fifo_underflow_assertion:
+            assert property (@(posedge clk) disable iff (rst) fifo_input_fetch_attributes.pop |-> (fifo_output_fetch_attributes.valid | fifo_input_fetch_attributes.push)) else $error("underflow");
 endmodule
