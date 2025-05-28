@@ -28,6 +28,12 @@ package cva5_types;
     localparam LOG2_RETIRE_PORTS = $clog2(RETIRE_PORTS);
     localparam LOG2_MAX_IDS = $clog2(MAX_IDS);
     localparam MAX_LS_SUBUNITS = 3;
+    localparam XLEN = 32;
+    localparam NUM_SUB_UNITS = int'(CONFIG.INCLUDE_ILOCAL_MEM) + int'(CONFIG.INCLUDE_ICACHE) + int'(CONFIG.INCLUDE_IBUS);
+    localparam NUM_SUB_UNITS_W = (NUM_SUB_UNITS == 1) ? 1 : $clog2(NUM_SUB_UNITS);
+    
+    
+
 
     typedef logic[LOG2_MAX_IDS-1:0] id_t;
     typedef logic[$clog2(MAX_LS_SUBUNITS)-1:0] ls_subunit_t;
@@ -257,5 +263,39 @@ package cva5_types;
         logic [31:0] instruction;
         logic valid;
     } trace_retire_outputs_t;
+    
+    typedef struct packed{
+        logic remainder_op;
+        logic negate_result;
+        id_t id;
+    } div_attributes_t;
+    typedef struct packed{
+        logic [XLEN-1:0] unsigned_dividend;
+        logic [XLEN-1:0] unsigned_divisor;
+        logic [$clog2(32)-1:0] dividend_CLZ;
+        logic [$clog2(32)-1:0] divisor_CLZ;
+        logic divisor_is_zero;
+        logic reuse_result;
+        div_attributes_t attr;
+    } div_fifo_inputs_t;
+    
+     typedef struct packed{
+        logic is_predicted_branch_or_jump;
+        logic is_branch;
+        logic [31:0] early_flush_pc;
+        logic address_valid;
+        logic mmu_fault;
+        logic [NUM_SUB_UNITS_W-1:0] subunit_id;
+    } fetch_attributes_t;
+    
+    typedef struct packed{
+        logic is_signed;
+        logic [1:0] byte_addr;
+        logic [1:0] sign_sel;
+        logic [1:0] final_mux_sel;
+        id_t id;
+        logic [NUM_SUB_UNITS_W-1:0] subunit_id;
+        fp_ls_op_t fp_op;
+    } load_attributes_t;
 
 endpackage
