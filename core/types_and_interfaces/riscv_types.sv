@@ -26,6 +26,8 @@ package riscv_types;
     localparam XLEN = 32;
     localparam PAGE_ADDR_W = 12;
     localparam ECODE_W = 5;
+    localparam NUM_SUB_UNITS = int'(CONFIG.INCLUDE_ILOCAL_MEM) + int'(CONFIG.INCLUDE_ICACHE) + int'(CONFIG.INCLUDE_IBUS);
+    localparam NUM_SUB_UNITS_W = (NUM_SUB_UNITS == 1) ? 1 : $clog2(NUM_SUB_UNITS);
 
     typedef logic [4:0] rs_addr_t;
     typedef struct packed{
