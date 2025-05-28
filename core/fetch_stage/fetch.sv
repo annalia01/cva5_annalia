@@ -25,9 +25,11 @@ module fetch
     import cva5_config::*;
     import riscv_types::*;
     import cva5_types::*;
+    import fifo_structs_pkg::*;
 
     # (
-        parameter cpu_config_t CONFIG = EXAMPLE_CONFIG
+        parameter cpu_config_t CONFIG = EXAMPLE_CONFIG,
+        parameter type DATA_TYPE = fetch_attributes_t
     )
 
     (
@@ -241,14 +243,24 @@ module fetch
         .one_hot (sub_unit_address_match), 
         .int_out (subunit_id)
     );
-    assign fetch_attr_fifo_enqueue_output.data_in = '{
+    /*assign fetch_attr_fifo_enqueue_output.data_in = '{
         is_predicted_branch_or_jump : bp_input.use_prediction,
         is_branch : (bp_input.use_prediction & bp_input.is_branch),
         early_flush_pc : pc_plus_4,
         address_valid : address_valid,
         mmu_fault : tlb_input.is_fault,
         subunit_id : subunit_id
-    };
+    };*/
+
+    assign fetch_attr_fifo_enqueue_output.data_in.is_predicted_branch_or_jump = bp_input.use_prediction;
+    assign fetch_attr_fifo_enqueue_output.data_in.is_branch = bp_input.use_prediction & bp_input.is_branch;
+    assign fetch_attr_fifo_enqueue_output.data_in.early_flush_pc = pc_plus_4;
+    assign fetch_attr_fifo_enqueue_output.data_in.address_valid = address_valid;
+    assign fetch_attr_fifo_enqueue_output.data_in.mmu_fault = tlb_input.is_fault;
+    assign fetch_attr_fifo_enqueue_output.data_in.subunit_id = subunit_id;
+    assign fetch_attr_fifo_enqueue_output.push = pc_id_assigned;
+    assign fetch_attr_fifo_enqueue_output.potential_push = pc_id_assigned;
+    assign fetch_attr_fifo_dequeue_output.pop = internal_fetch_complete;
     assign fetch_attr_fifo_enqueue_output.push = pc_id_assigned;
     assign fetch_attr_fifo_enqueue_output.potential_push = pc_id_assigned;
     assign fetch_attr_fifo_dequeue_output.pop = internal_fetch_complete;
