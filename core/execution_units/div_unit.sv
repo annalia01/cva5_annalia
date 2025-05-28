@@ -23,13 +23,14 @@ import cva5_config::*;
     import riscv_types::*;
     import cva5_types::*;
     import opcodes::*;
-    import fifo_structs_pkg::*;
+    //import fifo_structs_pkg::*;
     
-module div_unit # (
+    
 
+  
     
-    parameter type DATA_TYPE = div_fifo_inputs_t
-)
+module div_unit 
+
     (
         input logic clk,
         input logic rst,
@@ -90,7 +91,6 @@ module div_unit # (
         div_attributes_t attr;
     } div_fifo_inputs_t;*/
 div_attributes_t wb_attr;
-
     //unsigned_division_interface #(.DATA_WIDTH(32)) div_core();
     unsigned_division_interface_requester_output div_core_requester_output;
     unsigned_division_interface_requester_input div_core_requester_input;
@@ -102,11 +102,11 @@ div_attributes_t wb_attr;
 
     //fifo_interface #(.DATA_TYPE(div_fifo_inputs_t)) input_fifo();
     enqueue_fifo_interface_input input_fifo_enqueue_input;
-    enqueue_fifo_interface_output input_fifo_enqueue_output;
-    dequeue_fifo_interface_input input_fifo_dequeue_input;
+    enqueue_fifo_interface_output_div_fifo input_fifo_enqueue_output;
+    dequeue_fifo_interface_input_div_fifo input_fifo_dequeue_input;
     dequeue_fifo_interface_output input_fifo_dequeue_output;
-    structure_fifo_interface_input input_fifo_structure_input;
-    structure_fifo_interface_output input_fifo_structure_output;
+    structure_fifo_interface_input_div_fifo input_fifo_structure_input;
+    structure_fifo_interface_output_div_fifo input_fifo_structure_output;
 
     function logic [31:0] negate_if  (input logic [31:0] a, logic b);
         return ({32{b}} ^ a) + 32'(b);
@@ -188,10 +188,10 @@ div_attributes_t wb_attr;
     //and one in this input "fifo," we can support two in-flight div ops.
     cva5_fifo #(.DATA_TYPE(div_fifo_inputs_t), .FIFO_DEPTH(1))
     div_input_fifo (
-        .clk    (clk),
-        .rst    (rst),
-        .fifo_input   (input_fifo_structure_input),
-        .fifo_output (input_fifo_structure_output)
+        .clk(clk),
+        .rst(rst),
+        .fifo_input_div_fifo(input_fifo_structure_input),
+        .fifo_output_div_fifo(input_fifo_structure_output)
     );
 
     logic div_ready;
