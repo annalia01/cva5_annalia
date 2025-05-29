@@ -51,82 +51,10 @@ module load_store_queue //ID-based input buffer for Load/Store Unit
     localparam LOG2_SQ_DEPTH = $clog2(CONFIG.SQ_DEPTH);
     localparam DOUBLE_MIN_WIDTH = FLEN >= 32 ? 32 : FLEN;
 
-    typedef struct packed {
-        logic [11:0] offset;
-        logic [2:0] fn3;
-        logic fp;
-        logic double;
-        logic amo;
-        amo_t amo_type;
-        logic [31:0] amo_wdata;
-        id_t id;
-        logic store_collision;
-        logic [LOG2_SQ_DEPTH-1:0] sq_index;
-    } lq_entry_t;
 
-    typedef struct packed {
-        logic discard;
-        logic [19:0] addr;
-        ls_subunit_t subunit;
-    } addr_entry_t;
     
-    typedef struct {
-      logic full;
-  } enqueue_fifo_interface_input;
-
-  typedef struct {
-      lq_entry_t data_in;
-      logic push;
-      logic potential_push;
-  } enqueue_fifo_interface_output_lq_entry_t;
-
-  typedef struct {
-      logic valid;
-      lq_entry_t data_out;
-  } dequeue_fifo_interface_input_lq_entry_t;
-
-  typedef struct {
-      logic pop;
-  } dequeue_fifo_interface_output;
-
-  typedef struct {
-      logic push;
-      logic pop;
-      lq_entry_t data_in;
-      logic potential_push;
-  } structure_fifo_interface_input_lq_entry_t;
-
-  typedef struct {
-      lq_entry_t data_out;
-      logic valid;
-      logic full;
-  } structure_fifo_interface_output_lq_entry_t;
-  
    
-  typedef struct {
-      addr_entry_t data_in;
-      logic push;
-      logic potential_push;
-  } enqueue_fifo_interface_output_addr_entry_t;
 
-  typedef struct {
-      logic valid;
-      addr_entry_t data_out;
-  } dequeue_fifo_interface_input_addr_entry_t;
-
-
-  typedef struct {
-      logic push;
-      logic pop;
-      addr_entry_t data_in;
-      logic potential_push;
-  } structure_fifo_interface_input_addr_entry_t;
-
-  typedef struct {
-      addr_entry_t data_out;
-      logic valid;
-      logic full;
-  } structure_fifo_interface_output_addr_entry_t;
 
     logic [LOG2_SQ_DEPTH-1:0] sq_index;
     logic [LOG2_SQ_DEPTH-1:0] sq_oldest;
@@ -193,14 +121,14 @@ module load_store_queue //ID-based input buffer for Load/Store Unit
 
     ////////////////////////////////////////////////////
     //Load Queue
-    cva5_fifo #(.DATA_TYPE(lq_entry_t), .FIFO_DEPTH(MAX_IDS))
+    cva5_fifo_lq_entry #(.DATA_TYPE(lq_entry_t), .FIFO_DEPTH(MAX_IDS))
     load_queue_fifo (
         .clk(clk),
         .rst(rst),
         .fifo_input(lq_structure_input),
         .fifo_output(lq_structure_output)
     );
-    cva5_fifo #(.DATA_TYPE(addr_entry_t), .FIFO_DEPTH(MAX_IDS))
+    cva5_fifo_addr_entry #(.DATA_TYPE(addr_entry_t), .FIFO_DEPTH(MAX_IDS))
     load_queue_addr_fifo (
         .clk(clk),
         .rst(rst),
@@ -266,7 +194,7 @@ assign lq_enqueue_output.data_in.sq_index = sq_index;
         .fp_wb_packet (fp_wb_packet),
         .store_retire (store_retire)
     );
-    cva5_fifo #(.DATA_TYPE(addr_entry_t), .FIFO_DEPTH(CONFIG.SQ_DEPTH))
+    cva5_fifo_addr_entry #(.DATA_TYPE(addr_entry_t), .FIFO_DEPTH(CONFIG.SQ_DEPTH))
     store_queue_addr_fifo (
         .clk(clk),
         .rst(rst),
