@@ -44,7 +44,7 @@ module cva5_fifo_load_attributes
         input logic rst,
         //fifo_interface.structure fifo
         structure_fifo_interface_input_load_attributes fifo_input,
-        structure_fifo_interface_output_load_attributes fifo_output,
+        structure_fifo_interface_output_load_attributes fifo_output
         
         
     );
@@ -156,9 +156,10 @@ module cva5_fifo_load_attributes
 
     ////////////////////////////////////////////////////
     //Assertions
-    fifo_overflow_assertion:
+    ifo_overflow_assertion:
     assert property (@(posedge clk) disable iff (rst) fifo_input.push |-> (~fifo_output.full | fifo_input.pop)) else $error("overflow");
     fifo_potenial_push_overflow_assertion:
+        assert property (@(posedge clk) disable iff (rst) fifo_input.potential_push |-> (~fifo_output.full | fifo_input.pop)) else $error("potential push overflow");
     fifo_underflow_assertion:
             assert property (@(posedge clk) disable iff (rst) fifo_input.pop |-> (fifo_output.valid | fifo_input.push)) else $error("underflow");
 
