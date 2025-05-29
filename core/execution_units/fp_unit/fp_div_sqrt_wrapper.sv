@@ -46,7 +46,7 @@ module fp_div_sqrt_wrapper
 
     //fp_intermediate_wb_interface div_wb();
     fp_intermediate_wb_interface_unit_input div_wb_unit_input;
-    fp_intermediate_wb_interface_unit_output div_wb_unit_input;
+    fp_intermediate_wb_interface_unit_output div_wb_unit_output;
     fp_intermediate_wb_interface_wb_input div_wb_wb_input;
     fp_intermediate_wb_interface_wb_output div_wb_wb_output;
     
