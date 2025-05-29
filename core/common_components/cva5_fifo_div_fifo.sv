@@ -44,7 +44,7 @@ module cva5_fifo_div_fifo
         input logic rst,
         //fifo_interface.structure fifo
         structure_fifo_interface_input_div_fifo fifo_input,
-        structure_fifo_interface_output_div_fifo fifo_output,
+        structure_fifo_interface_output_div_fifo fifo_output
         
         
     );
