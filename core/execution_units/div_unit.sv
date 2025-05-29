@@ -186,12 +186,12 @@ div_attributes_t wb_attr;
     //Input FIFO
     //Currently just a register (DEPTH=1).  As one div instruction can be in-progress
     //and one in this input "fifo," we can support two in-flight div ops.
-    cva5_fifo #(.DATA_TYPE(div_fifo_inputs_t), .FIFO_DEPTH(1))
+    cva5_fifo_div_fifo #(.DATA_TYPE(div_fifo_inputs_t), .FIFO_DEPTH(1))
     div_input_fifo (
         .clk(clk),
         .rst(rst),
-        .fifo_input_div_fifo(input_fifo_structure_input),
-        .fifo_output_div_fifo(input_fifo_structure_output)
+        .fifo_input(input_fifo_structure_input),
+        .fifo_output(input_fifo_structure_output)
     );
 
     logic div_ready;
