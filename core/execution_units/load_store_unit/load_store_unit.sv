@@ -668,12 +668,12 @@ assign load_attributes_enqueue_output.data_in.fp_op = lsq_ls_input.load_data_out
     assign load_attributes_enqueue_output.push = sub_unit_load_issue;
     assign load_attributes_enqueue_output.potential_push = load_attributes_structure_input.push;
     
-    cva5_fifo #(.DATA_TYPE(load_attributes_t), .FIFO_DEPTH(ATTRIBUTES_DEPTH))
+    cva5_fifo_load_attributes #(.DATA_TYPE(load_attributes_t), .FIFO_DEPTH(ATTRIBUTES_DEPTH))
     attributes_fifo (
         .clk (clk),
         .rst (rst), 
-        .fifo_input_load_attributes (load_attributes_structure_input),
-        .fifo_output_load_attributes (load_attributes_structure_output)
+        .fifo_input (load_attributes_structure_input),
+        .fifo_output (load_attributes_structure_output)
     );
 
     assign load_attributes_dequeue_output.pop = load_complete;
