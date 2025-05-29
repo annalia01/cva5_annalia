@@ -262,12 +262,12 @@ assign fetch_attr_fifo_enqueue_output.data_in.subunit_id = subunit_id;
     assign fetch_attr_fifo_enqueue_output.potential_push = pc_id_assigned;
     assign fetch_attr_fifo_dequeue_output.pop = internal_fetch_complete;
 
-    cva5_fifo #(.DATA_TYPE(fetch_attributes_t), .FIFO_DEPTH(MAX_OUTSTANDING_REQUESTS))
+    cva5_fifo_fetch_attributes #(.DATA_TYPE(fetch_attributes_t), .FIFO_DEPTH(MAX_OUTSTANDING_REQUESTS))
     attributes_fifo (
         .clk (clk), 
         .rst (rst), 
-        .fifo_input_fetch_attributes (fetch_attr_fifo_structure_input),
-        .fifo_output_fetch_attributes (fetch_attr_fifo_structure_output)
+        .fifo_input (fetch_attr_fifo_structure_input),
+        .fifo_output (fetch_attr_fifo_structure_output)
     );
     assign fetch_attr = fetch_attr_fifo_dequeue_input.data_out;
     assign early_flush_pc = fetch_attr.early_flush_pc;
