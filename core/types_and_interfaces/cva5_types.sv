@@ -32,6 +32,7 @@ package cva5_types;
     localparam XLEN = 32;
     localparam NUM_SUB_UNITS = int'(EXAMPLE_CONFIG.INCLUDE_ILOCAL_MEM) + int'(EXAMPLE_CONFIG.INCLUDE_ICACHE) + int'(EXAMPLE_CONFIG.INCLUDE_IBUS);
     localparam NUM_SUB_UNITS_W = (NUM_SUB_UNITS == 1) ? 1 : $clog2(NUM_SUB_UNITS);
+    localparam LOG2_SQ_DEPTH = $clog2(EXAMPLE_CONFIG.SQ_DEPTH);
     
     
 
@@ -298,5 +299,24 @@ package cva5_types;
         logic [NUM_SUB_UNITS_W-1:0] subunit_id;
         fp_ls_op_t fp_op;
     } load_attributes_t;
+    
+    typedef struct packed {
+        logic [11:0] offset;
+        logic [2:0] fn3;
+        logic fp;
+        logic double;
+        logic amo;
+        amo_t amo_type;
+        logic [31:0] amo_wdata;
+        id_t id;
+        logic store_collision;
+        logic [LOG2_SQ_DEPTH-1:0] sq_index;
+    } lq_entry_t;
+
+    typedef struct packed {
+        logic discard;
+        logic [19:0] addr;
+        ls_subunit_t subunit;
+    } addr_entry_t;
 
 endpackage
