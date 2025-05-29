@@ -42,12 +42,7 @@ module cva5_fifo
         input logic clk,
         input logic rst,
         //fifo_interface.structure fifo
-        structure_fifo_interface_input_div_fifo fifo_input_div_fifo,
-        structure_fifo_interface_output_div_fifo fifo_output_div_fifo,
-        structure_fifo_interface_input_fetch_attributes fifo_input_fetch_attributes,
-        structure_fifo_interface_output_fetch_attributes fifo_output_fetch_attributes,
-        structure_fifo_interface_input_load_attributes fifo_input_load_attributes,
-        structure_fifo_interface_output_load_attributes fifo_output_load_attributes
+        
         //structure_fifo_interface_input fifo_input,
         //structure_fifo_interface_output fifo_output
     );
@@ -62,8 +57,7 @@ module cva5_fifo
             if (rst)
                 //fifo_output.valid <= 0;
                 fifo_output_div_fifo.valid <= 0;
-                fifo_output_fetch_attributes.valid <= 0;
-                fifo_output_load_attributes.valid <=0;
+                
             else if (fifo_input.push & ~fifo_input.pop)
                 fifo_output_div_fifo.valid <= 1;
                 fifo_output_fetch_attributes.valid <= 1;
