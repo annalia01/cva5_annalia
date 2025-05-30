@@ -19,7 +19,7 @@
  * Author(s):
  *             Eric Matthews <ematthew@sfu.ca>
  */
-
+`include "internal_interfaces.sv"
 module alu_unit
 
     import cva5_config::*;
