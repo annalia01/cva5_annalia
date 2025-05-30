@@ -510,7 +510,7 @@ module load_store_unit
     always_ff @(posedge clk) begin
         if (rst)
             tlb_request_r <= 0;
-        else if (tlb_input.new_request)
+        else if (tlb_output.new_request)
             tlb_request_r <= 1;
         else if (tlb_input.done | tlb_input.is_fault)
             tlb_request_r <= 0;
@@ -695,7 +695,7 @@ assign load_attributes_enqueue_output.data_in.fp_op = lsq_ls_input.load_data_out
     endgenerate
 
     generate if (CONFIG.INCLUDE_DLOCAL_MEM) begin : gen_ls_local_mem
-        assign sub_unit_address_match[LOCAL_MEM_ID] = dlocal_mem_addr_utils.address_range_check(tlb_input.physical_address);
+        assign sub_unit_address_match[LOCAL_MEM_ID] = addr_utils_pkg::address_range_check(tlb_input.physical_address, dlocal_mem_addr_utils);
         local_mem_sub_unit d_local_mem (
             .clk (clk), 
             .rst (rst),
@@ -713,7 +713,7 @@ assign load_attributes_enqueue_output.data_in.fp_op = lsq_ls_input.load_data_out
     endgenerate
 
     generate if (CONFIG.INCLUDE_PERIPHERAL_BUS) begin : gen_ls_pbus
-        assign sub_unit_address_match[BUS_ID] = dpbus_addr_utils.address_range_check(tlb_input.physical_address);
+        assign sub_unit_address_match[BUS_ID] = addr_utils_pkg::address_range_check(tlb_input.physical_address, dpbus_addr_utils);
             if(CONFIG.PERIPHERAL_BUS_TYPE == AXI_BUS) begin : gen_axi
                 axi_master axi_bus (
                     .clk (clk),
@@ -765,7 +765,7 @@ assign load_attributes_enqueue_output.data_in.fp_op = lsq_ls_input.load_data_out
             logic uncacheable_load;
             logic uncacheable_store;
 
-        assign sub_unit_address_match[DCACHE_ID] = dcache_addr_utils.address_range_check(tlb_input.physical_address);
+        assign sub_unit_address_match[DCACHE_ID] = addr_utils_pkg::address_range_check(tlb_input.physical_address, dcache_addr_utils);
 
             assign uncacheable_load = CONFIG.DCACHE.USE_NON_CACHEABLE & uncacheable_utils.address_range_check(shared_inputs.addr);
             assign uncacheable_store = CONFIG.DCACHE.USE_NON_CACHEABLE & uncacheable_utils.address_range_check(shared_inputs.addr);
