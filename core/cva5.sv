@@ -526,7 +526,7 @@ module cva5
         .unit_issue_output (unit_issue_decode_output),
         .gc (gc),
         .current_privilege (current_privilege),
-        .exception (exception_output[PRE_ISSUE_EXCEPTION])
+        .exception_output (exception_output[PRE_ISSUE_EXCEPTION])
     );
 
     ////////////////////////////////////////////////////
