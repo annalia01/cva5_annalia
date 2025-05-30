@@ -38,7 +38,7 @@ module fp_add
         
         //fp_intermediate_wb_interface.unit wb
         fp_intermediate_wb_interface_unit_input wb_input,
-        fp_intermediate_wb_interface_unit_output wb_output,
+        fp_intermediate_wb_interface_unit_output wb_output
         
     );
 
