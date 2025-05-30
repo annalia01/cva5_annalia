@@ -218,9 +218,11 @@ module decode_and_issue
             issue.opcode <= decode.instruction[6:0];
             issue_rs_addr <= decode_rs_addr;
             issue_phys_rs_addr <= renamer_input.phys_rs_addr;
-            fp_issue_phys_rs_addr <= fp_renamer_input.phys_rs_addr;
+            fp_issue_phys_rs_addr[0] <= fp_renamer_input.phys_rs_addr[0];
+            fp_issue_phys_rs_addr[1] <= fp_renamer_input.phys_rs_addr[1];
             issue_rs_wb_group <= renamer_input.rs_wb_group;
-            fp_issue_rs_wb_group <= fp_renamer_input.rs_wb_group;
+            fp_issue_rs_wb_group[0] <= fp_renamer_input.rs_wb_group[0];
+            fp_issue_rs_wb_group[1] <= fp_renamer_input.rs_wb_group[1];
             issue.rd_addr <= decode_instruction.rd_addr;
             issue.phys_rd_addr <= renamer_input.phys_rd_addr;
             issue.fp_phys_rd_addr <= fp_renamer_input.phys_rd_addr;
