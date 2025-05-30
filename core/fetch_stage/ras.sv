@@ -57,7 +57,7 @@ module ras
  
     //On a speculative branch, save the current stack pointer
     //Restored if branch is misspredicted (gc_fetch_flush)
-    cva5_fifo #(.DATA_TYPE(logic[RAS_DEPTH_W-1:0]), .FIFO_DEPTH(MAX_IDS))
+    cva5_fifo_ras #(.DATA_TYPE(logic[RAS_DEPTH_W-1:0]), .FIFO_DEPTH(MAX_IDS))
     read_index_fifo (
         .clk,
         .rst(rst | gc.fetch_flush | early_branch_flush_ras_adjust),
