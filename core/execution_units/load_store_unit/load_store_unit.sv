@@ -167,7 +167,7 @@ module load_store_unit
     responder_memory_sub_unit_interface_output sub_unit_responder_output[NUM_SUB_UNITS-1:0];
 
     //addr_utils_interface #(CONFIG.DCACHE.NON_CACHEABLE.L, CONFIG.DCACHE.NON_CACHEABLE.H) uncacheable_utils ();
-    addr_range_t dpbus_addr_utils = '{
+    addr_range_t uncacheable_utils = '{
         base_addr: CONFIG.DCACHE.NON_CACHEABLE.L,
         upper_bound: CONFIG.DCACHE.NON_CACHEABLE.H
     };
