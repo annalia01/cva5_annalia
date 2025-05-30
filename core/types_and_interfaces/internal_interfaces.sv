@@ -297,15 +297,15 @@ typedef struct {
   } structure_fifo_interface_output_ras;
 
  typedef struct {
-      logic[RAS_DEPTH_W-1:0] data_in;
+      phys_addr_t data_in;
       logic push;
       logic potential_push;
-  } enqueue_fifo_interface_output_ras;
+ } enqueue_fifo_interface_output_phys_addr;
 
   typedef struct {
       logic valid;
-      logic[RAS_DEPTH_W-1:0] data_out;
-  } dequeue_fifo_interface_input_ras;
+      phys_addr_t data_out;
+  } dequeue_fifo_interface_phys_addr;
 
 
   typedef struct {
@@ -313,13 +313,13 @@ typedef struct {
       logic pop;
       phys_addr_t data_in;
       logic potential_push;
-  } structure_fifo_interface_input_ras;
+  } structure_fifo_interface_input_phys_addr;
 
   typedef struct {
       phys_addr_t data_out;
       logic valid;
       logic full;
-  } structure_fifo_interface_output_ras;
+  } structure_fifo_interface_output_phys_addr;
 
   
   
