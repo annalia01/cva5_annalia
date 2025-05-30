@@ -181,7 +181,8 @@ module decode_and_issue
     assign renamer_output.rd_addr = decode_instruction.rd_addr;
     assign fp_renamer_output.rd_addr = decode_instruction.rd_addr;
     assign renamer_output.rs_addr = decode_rs_addr;
-    assign fp_renamer_output.rs_addr = fp_decode_rs_addr;
+    assign fp_renamer_output.rs_addr[0] = fp_decode_rs_addr[0];
+    assign fp_renamer_output.rs_addr[1] = fp_decode_rs_addr[1];
     assign renamer_output.uses_rd = decode_uses_rd;
     assign fp_renamer_output.uses_rd = fp_decode_uses_rd;
     assign renamer_output.rd_wb_group = decode_wb_group;
@@ -192,12 +193,15 @@ module decode_and_issue
     ////////////////////////////////////////////////////
     //Decode ID Support
     assign decode_rd_addr = decode_instruction.rd_addr;
-    assign decode_phys_rd_addr = renamer.phys_rd_addr;
-    assign fp_decode_phys_rd_addr = fp_renamer.phys_rd_addr;
-    assign decode_phys_rs_addr = renamer.phys_rs_addr;
-    assign fp_decode_phys_rs_addr = fp_renamer.phys_rs_addr;
-    assign decode_rs_wb_group = renamer.rs_wb_group;
-    assign fp_decode_rs_wb_group = fp_renamer.rs_wb_group;
+    assign decode_phys_rd_addr = renamer_input.phys_rd_addr;
+    assign fp_decode_phys_rd_addr = fp_renamer_input.phys_rd_addr;
+    assign decode_phys_rs_addr = renamer_input.phys_rs_addr;
+    assign fp_decode_phys_rs_addr[0] = fp_renamer_input.phys_rs_addr[0];
+    assign fp_decode_phys_rs_addr[1] = fp_renamer_input.phys_rs_addr[1];
+    assign decode_rs_wb_group[0] = renamer_output.rs_wb_group[0];
+    assign decode_rs_wb_group[1] = renamer_output.rs_wb_group[1];
+    assign fp_decode_rs_wb_group[0] = fp_renamer_output.rs_wb_group[0];
+    assign fp_decode_rs_wb_group[1] = fp_renamer_output.rs_wb_group[1];
 
     ////////////////////////////////////////////////////
     //Issue
