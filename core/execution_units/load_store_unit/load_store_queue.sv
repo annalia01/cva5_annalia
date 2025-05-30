@@ -81,7 +81,7 @@ module load_store_queue //ID-based input buffer for Load/Store Unit
     structure_fifo_interface_input_lq_entry lq_structure_input;
     structure_fifo_interface_output_lq_entry lq_structure_output;
     
-    fifo_interface #(.DATA_TYPE(addr_entry_t)) lq_addr();
+    //fifo_interface #(.DATA_TYPE(addr_entry_t)) lq_addr();
     enqueue_fifo_interface_input lq_addr_enqueue_input;
     enqueue_fifo_interface_output_addr_entry lq_addr_enqueue_output;
     dequeue_fifo_interface_input_addr_entry lq_addr_dequeue_input;
@@ -175,9 +175,9 @@ assign lq_enqueue_output.data_in.store_collision = potential_store_conflict | (C
 assign lq_enqueue_output.data_in.sq_index = sq_index;
     ////////////////////////////////////////////////////
     //Store Queue
-    assign sq_enqueue_output.push = lsq_input.push & (lsq_input.data_in.store | lsq_input.data_in.cache_op);
-    assign sq_dequeue_output.pop = store_pop | sq_addr_discard;
-    assign sq_enqueue_output.data_in = lsq_input.data_in;
+    assign sq_addr_enqueue_output.push = lsq_input.push & (lsq_input.data_in.store | lsq_input.data_in.cache_op);
+    assign sq_addr_dequeue_output.pop = store_pop | sq_addr_discard;
+    assign sq_addr_enqueue_output.data_in = lsq_input.data_in;
 
     store_queue  # (.CONFIG(CONFIG)) sq_block (
         .clk (clk),
@@ -353,7 +353,7 @@ assign lsq_output.load_data_out.data_in = CONFIG.INCLUDE_AMO ? lq_dequeue_input.
 assign lsq_output.load_data_out.id = lq_dequeue_input.data_out.id;
 assign lsq_output.load_data_out.fp_op = load_type;
 
-assign lsq_output.store_data_out.addr = {(sq_addr_dequeue_input.valid ? sq_addr_dequeue_input.data_out.addr : lsq_input.addr_data_in.addr), sq_dequeue_input.data_out.offset[11:3], store_addr_bit_3, sq_ls_input.data_out.offset[1:0]};
+  assign lsq_output.store_data_out.addr = {(sq_addr_dequeue_input.valid ? sq_addr_dequeue_input.data_out.addr : lsq_input.addr_data_in.addr), sq_queue_input.data_out.offset[11:3], store_addr_bit_3, sq_ls_input.data_out.offset[1:0]};
 assign lsq_output.store_data_out.load = 0;
 assign lsq_output.store_data_out.store = 1;
 assign lsq_output.store_data_out.cache_op = sq_ls_input.data_out.cache_op;
