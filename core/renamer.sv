@@ -93,7 +93,7 @@ module renamer
 
     ////////////////////////////////////////////////////
     //Free list FIFO
-    register_free_list #(.DATA_TYPE(phys_addr_t), .FIFO_DEPTH(32)) free_list_fifo (
+    register_free_list_phys_addr #(.DATA_TYPE(phys_addr_t), .FIFO_DEPTH(32)) free_list_fifo (
         .clk (clk),
         .rst (rst),
         .fifo_input (free_list_structure_input),
