@@ -175,7 +175,7 @@ module itlb
         .execute(1'b1),
         .mxr(mmu_input.mxr),
         .sum(mmu_input.sum),
-        .privilege(mmu.privilege),
+        .privilege(mmu_input.privilege),
         .valid(perms_valid_s)
     );
 
