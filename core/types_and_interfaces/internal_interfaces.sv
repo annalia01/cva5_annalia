@@ -321,7 +321,55 @@ typedef struct {
       logic full;
   } structure_fifo_interface_output_phys_addr;
 
+ typedef struct {
+      addr_entry_t data_in;
+      logic push;
+      logic potential_push;
+ } enqueue_fifo_interface_output_addr_entry;
+
+  typedef struct {
+      logic valid;
+      addr_entry_t data_out;
+  } dequeue_fifo_interface_input_addr_entry;
+
+
+  typedef struct {
+      logic push;
+      logic pop;
+      addr_entry_t data_in;
+      logic potential_push;
+  } structure_fifo_interface_input_addr_entry;
+
+  typedef struct {
+      addr_entry_t data_out;
+      logic valid;
+      logic full;
+  } structure_fifo_interface_output_addr_entry;
   
+  typedef struct {
+      lq_entry_t data_in;
+      logic push;
+      logic potential_push;
+ } enqueue_fifo_interface_output_lq_entry;
+
+  typedef struct {
+      logic valid;
+      lq_entry_t data_out;
+  } dequeue_fifo_interface_input_lq_entry;
+
+
+  typedef struct {
+      logic push;
+      logic pop;
+      lq_entry_t data_in;
+      logic potential_push;
+  } structure_fifo_interface_input_lq_entry;
+
+  typedef struct {
+      lq_entry_t data_out;
+      logic valid;
+      logic full;
+  } structure_fifo_interface_output_lq_entry; 
   
 typedef struct {
     logic [31:0] virtual_address;
