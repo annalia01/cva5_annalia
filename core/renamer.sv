@@ -64,11 +64,11 @@ module renamer
 
     //fifo_interface #(.DATA_TYPE(phys_addr_t)) free_list ();
     enqueue_fifo_interface_input free_list_enqueue_input;
-    enqueue_fifo_interface_output free_list_enqueue_output;
-    dequeue_fifo_interface_input free_list_dequeue_input;
+    enqueue_fifo_interface_output_phys_addr free_list_enqueue_output;
+    dequeue_fifo_interface_input_phys_addr free_list_dequeue_input;
     dequeue_fifo_interface_output free_list_dequeue_output;
-    structure_fifo_interface_input free_list_structure_input;
-    structure_fifo_interface_output free_list_structure_output;
+    structure_fifo_interface_input_phys_addr free_list_structure_input;
+    structure_fifo_interface_output_phys_addr free_list_structure_output;
 
     logic rename_valid;
     logic rollback;
