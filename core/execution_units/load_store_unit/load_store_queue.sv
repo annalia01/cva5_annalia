@@ -75,19 +75,19 @@ module load_store_queue //ID-based input buffer for Load/Store Unit
 
     //fifo_interface #(.DATA_TYPE(lq_entry_t)) lq();
     enqueue_fifo_interface_input lq_enqueue_input;
-    enqueue_fifo_interface_output_lq_entry_t lq_enqueue_output;
-    dequeue_fifo_interface_input_lq_entry_t lq_dequeue_input;
+    enqueue_fifo_interface_output_lq_entry lq_enqueue_output;
+    dequeue_fifo_interface_input_lq_entry lq_dequeue_input;
     dequeue_fifo_interface_output lq_dequeue_output;
-    structure_fifo_interface_input_lq_entry_t lq_structure_input;
-    structure_fifo_interface_output_lq_entry_t lq_structure_output;
+    structure_fifo_interface_input_lq_entry lq_structure_input;
+    structure_fifo_interface_output_lq_entry lq_structure_output;
     
     fifo_interface #(.DATA_TYPE(addr_entry_t)) lq_addr();
     enqueue_fifo_interface_input lq_addr_enqueue_input;
-    enqueue_fifo_interface_output_addr_entry_t lq_addr_enqueue_output;
-    dequeue_fifo_interface_input_addr_entry_t lq_addr_dequeue_input;
+    enqueue_fifo_interface_output_addr_entry lq_addr_enqueue_output;
+    dequeue_fifo_interface_input_addr_entry lq_addr_dequeue_input;
     dequeue_fifo_interface_output lq_addr_dequeue_output;
-    structure_fifo_interface_input_addr_entry_t lq_addr_structure_input;
-    structure_fifo_interface_output_addr_entry_t lq_addr_structure_output;
+    structure_fifo_interface_input_addr_entry lq_addr_structure_input;
+    structure_fifo_interface_output_addr_entry lq_addr_structure_output;
     
     //store_queue_interface sq();
     ls_store_queue_interface_input sq_ls_input;
@@ -97,11 +97,11 @@ module load_store_queue //ID-based input buffer for Load/Store Unit
     
     //fifo_interface #(.DATA_TYPE(addr_entry_t)) sq_addr();
     enqueue_fifo_interface_input sq_addr_enqueue_input;
-    enqueue_fifo_interface_output_addr_entry_t sq_addr_enqueue_output;
-    dequeue_fifo_interface_input_addr_entry_t sq_addr_dequeue_input;
+    enqueue_fifo_interface_output_addr_entry sq_addr_enqueue_output;
+    dequeue_fifo_interface_input_addr_entry sq_addr_dequeue_input;
     dequeue_fifo_interface_output sq_addr_dequeue_output;
-    structure_fifo_interface_input_addr_entry_t sq_addr_structure_input;
-    structure_fifo_interface_output_addr_entry_t sq_addr_structure_output;
+    structure_fifo_interface_input_addr_entry sq_addr_structure_input;
+    structure_fifo_interface_output_addr_entry sq_addr_structure_output;
     
     ////////////////////////////////////////////////////
     //Implementation
