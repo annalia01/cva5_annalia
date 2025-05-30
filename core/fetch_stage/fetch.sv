@@ -66,11 +66,11 @@ module fetch
         
         //local_memory_interface.master instruction_bram,
         master_local_memory_interface_input instruction_bram_input,
-        master_local_memory_interface_input instruction_bram_output,
+        master_local_memory_interface_output instruction_bram_output,
         
         //wishbone_interface.master iwishbone,
         master_wishbone_interface_output iwishbone_output,
-        master_wishbone_interface_output iwishbone_input,
+        master_wishbone_interface_input iwishbone_input,
         
         input logic icache_on,
         //mem_interface.ro_master mem
