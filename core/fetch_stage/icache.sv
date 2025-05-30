@@ -26,9 +26,7 @@ module icache
     import riscv_types::*;
     import cva5_types::*;
     import cache_functions_pkg::*;
-    localparam int TAG_W        = SCONFIG.TAG_W;
-    localparam int LINE_W       = SCONFIG.LINE_ADDR_W;
-    localparam int SUB_LINE_W   = SCONFIG.SUB_LINE_ADDR_W;
+    
     
     // "Simulazione" oggetto addr_utils usando macro
     `define addr_utils_getTag(addr) getTag#(.TAG_W(TAG_W), .LINE_W(LINE_W), .SUB_LINE_W(SUB_LINE_W))(addr)
@@ -52,7 +50,7 @@ module icache
 
         //memory_sub_unit_interface.responder fetch_sub
         responder_memory_sub_unit_interface_input fetch_sub_input,
-        responder_memory_sub_unit_interface_output fetch_sub_output,
+        responder_memory_sub_unit_interface_output fetch_sub_output
     );
 
     localparam derived_cache_config_t SCONFIG = get_derived_cache_params(CONFIG, CONFIG.ICACHE, CONFIG.ICACHE_ADDR);
