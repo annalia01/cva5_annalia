@@ -47,11 +47,11 @@ module ras
      ///////////////////////////////////////////////////////
 
     enqueue_fifo_interface_input ri_fifo_enqueue_input;
-    enqueue_fifo_interface_output ri_fifo_enqueue_output;
-    dequeue_fifo_interface_input ri_fifo_dequeue_input;
+    enqueue_fifo_interface_output_ras ri_fifo_enqueue_output;
+    dequeue_fifo_interface_input_ras ri_fifo_dequeue_input;
     dequeue_fifo_interface_output ri_fifo_dequeue_output;
-    structure_fifo_interface_input ri_fifo_structure_input;
-    structure_fifo_interface_output ri_fifo_structure_output;
+    structure_fifo_interface_input_ras ri_fifo_structure_input;
+    structure_fifo_interface_output_ras ri_fifo_structure_output;
 
 
  
