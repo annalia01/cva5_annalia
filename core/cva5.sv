@@ -411,8 +411,8 @@ module cva5
         .iwishbone_input (iwishbone_input),
         .iwishbone_output (iwishbone_output),
         .icache_on ('1),
-        .tlb_input (itlb_tlb_input),
-        .tlb_output (itlb_tlb_output),
+        .tlb_input (itlb_requester_input),
+        .tlb_output (itlb_requester_output),
         .mem_input  (icache_mem_master_mem_input),
         .mem_output (icache_mem_master_mem_output)
     );
