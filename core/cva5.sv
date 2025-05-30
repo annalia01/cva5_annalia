@@ -407,7 +407,7 @@ module cva5
         .if_pc (if_pc),
         .fetch_instruction (fetch_instruction),
         .instruction_bram_input (instruction_bram_input),
-        .instruction_bram_output (instruction_bram_input),
+        .instruction_bram_output (instruction_bram_output),
         .iwishbone_input (iwishbone_input),
         .iwishbone_output (iwishbone_output),
         .icache_on ('1),
