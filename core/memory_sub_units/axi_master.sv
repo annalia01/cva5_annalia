@@ -122,9 +122,9 @@ module axi_master
                 current_state <= REQUESTING_WRITE;
             end
             REQUESTING_WRITE : begin //Wait for write (address and data) to be accepted
-                m_axi_output.awvalid <= m_axi_output.awvalid & ~m_axi_output.awready;
-                m_axi_output.wvalid <= m_axi_output.wvalid & ~m_axi_output.wready;
-                if ((~m_axi_output.awvalid | m_axi_output.awready) & (~m_axi_output.wvalid | m_axi_output.wready))
+                m_axi_output.awvalid <= m_axi_output.awvalid & ~m_axi_input.awready;
+                m_axi_output.wvalid <= m_axi_output.wvalid & ~m_axi_input.wready;
+                if ((~m_axi_output.awvalid | m_axi_input.awready) & (~m_axi_output.wvalid | m_axi_input.wready))
                     current_state <= WAITING_WRITE;
             end
             WAITING_WRITE : begin //Wait for write response; resubmit if RMW was not exclusive
