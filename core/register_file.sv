@@ -140,7 +140,7 @@ module register_file
     always_ff @ (posedge clk) begin
         for (int i = 0; i < NUM_WB_GROUPS; i++)
             for (int j = 0; j < READ_PORTS; j++)
-                if (decode_advance | rf_issue_input.inuse[j])
+                if (decode_advance | rf_issue_output.inuse[j])
                     commit_rs_data[i][j] <= commit[i].data;
    end
 
