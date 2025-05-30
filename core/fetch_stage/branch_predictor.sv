@@ -130,8 +130,8 @@ module branch_predictor
                 .a_en(tag_update_way[i]),
                 .a_wbe(tag_update_way[i]),
                 .a_wdata(ex_entry),
-                .a_addr(addr_utils_getHashedLineAddr(br_results.pc, i)),
-                .b_en(bp.new_mem_request),
+                .a_addr(cache_functions_pkg::getHashedLineAddr(br_results.pc, i)),
+                .b_en(bp_input.new_mem_request),
                 .b_addr(cache_functions_pkg::getHashedLineAddr(bp_input.next_pc, i)),
                 .b_rdata(if_entry[i]),
             .*);
