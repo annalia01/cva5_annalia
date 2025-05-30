@@ -33,7 +33,7 @@ package cva5_types;
     localparam NUM_SUB_UNITS = int'(EXAMPLE_CONFIG.INCLUDE_ILOCAL_MEM) + int'(EXAMPLE_CONFIG.INCLUDE_ICACHE) + int'(EXAMPLE_CONFIG.INCLUDE_IBUS);
     localparam NUM_SUB_UNITS_W = (NUM_SUB_UNITS == 1) ? 1 : $clog2(NUM_SUB_UNITS);
     localparam LOG2_SQ_DEPTH = $clog2(EXAMPLE_CONFIG.SQ_DEPTH);
-    
+    localparam RAS_DEPTH_W = $clog2(CONFIG.BP.RAS_ENTRIES);
     
 
 
