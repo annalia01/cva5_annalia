@@ -29,7 +29,7 @@ module div_core
         input logic rst,
         //unsigned_division_interface.divider div
         unsigned_division_interface_divider_input div_input,
-        unsigned_division_interface_divider_output div_output,
+        unsigned_division_interface_divider_output div_output
     );
     
     localparam CLZ_W = $clog2(DIV_WIDTH);
