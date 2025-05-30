@@ -75,8 +75,8 @@ module register_free_list
             write_index <= '0;
         end
         else begin
-            read_index <= read_index + LOG2_FIFO_DEPTH'(fifo.pop) - LOG2_FIFO_DEPTH'(rollback);
-            write_index <= write_index + LOG2_FIFO_DEPTH'(fifo.push);
+            read_index <= read_index + LOG2_FIFO_DEPTH'(fifo_input.pop) - LOG2_FIFO_DEPTH'(rollback);
+            write_index <= write_index + LOG2_FIFO_DEPTH'(fifo_input.push);
         end
     end
 
