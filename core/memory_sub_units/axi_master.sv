@@ -20,9 +20,9 @@
  *             Eric Matthews <ematthew@sfu.ca>
  *             Chris Keilbart <ckeilbar@sfu.ca>
  */
-
-module axi_master
 `include "external_interfaces.sv"
+module axi_master
+
     import riscv_types::*;
 
     (
