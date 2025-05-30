@@ -272,7 +272,7 @@ assign fetch_attr_fifo_enqueue_output.data_in.subunit_id = subunit_id;
     assign fetch_attr = fetch_attr_fifo_dequeue_input.data_out;
     assign early_flush_pc = fetch_attr.early_flush_pc;
 
-    assign inflight_count_next = inflight_count + MAX_OUTSTANDING_REQUESTS_W'(fetch_attr_fifo_enqueue_input.push) - MAX_OUTSTANDING_REQUESTS_W'(fetch_attr_fifo_structure_input.pop);
+    assign inflight_count_next = inflight_count + MAX_OUTSTANDING_REQUESTS_W'(fetch_attr_fifo_structure_input.push) - MAX_OUTSTANDING_REQUESTS_W'(fetch_attr_fifo_structure_input.pop);
     always_ff @(posedge clk) begin
         if (rst)
             inflight_count <= 0;
