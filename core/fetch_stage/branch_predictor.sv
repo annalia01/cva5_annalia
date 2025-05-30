@@ -27,9 +27,7 @@ module branch_predictor
     import cva5_types::*;
     import cache_functions_pkg::*;
     import addr_utils_pkg::*;
-    localparam int TAG_W        = SCONFIG.TAG_W;
-    localparam int LINE_W       = SCONFIG.LINE_ADDR_W;
-    localparam int SUB_LINE_W   = SCONFIG.SUB_LINE_ADDR_W;
+
 
     `define addr_utils_getTag(addr) getTag#(.TAG_W(TAG_W), .LINE_W(LINE_W), .SUB_LINE_W(SUB_LINE_W))(addr)
     `define addr_utils_getTagLineAddr(addr) getTagLineAddr#(.LINE_W(LINE_W), .SUB_LINE_W(SUB_LINE_W))(addr)
