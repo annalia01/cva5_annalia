@@ -22,7 +22,7 @@
  */
 
 module axi_master
-
+`include "external_interfaces.sv"
     import riscv_types::*;
 
     (
@@ -31,8 +31,8 @@ module axi_master
 
         output logic write_outstanding,
         //axi_interface.master m_axi,
-        master_axi_interface_input m_axi_input,
-        master_axi_interface_output m_axi_output,
+        input master_axi_interface_input m_axi_input,
+        output master_axi_interface_output m_axi_output,
 
         input logic amo,
         input amo_t amo_type,
