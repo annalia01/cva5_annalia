@@ -583,7 +583,7 @@ module cva5
         .constant_alu (constant_alu),
         .issue_rs_addr (issue_rs_addr),
         .issue_input (unit_issue_unit_input[ALU_ID]),
-        .issue_output (unit_issue_unit_input[ALU_ID]),
+        .issue_output (unit_issue_unit_output[ALU_ID]),
         .wb_input (unit_wb_unit_input[ALU_ID]),
         .wb_output (unit_wb_unit_output[ALU_ID])
     );
