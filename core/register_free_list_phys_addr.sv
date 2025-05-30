@@ -25,7 +25,7 @@
  *  Intended for small FIFO depths.
  *  For continuous operation when full, enqueing side must inspect pop signal
  */
-module register_free_list
+module register_free_list_phys_addr
 
     import cva5_config::*;
     import riscv_types::*;
@@ -39,8 +39,8 @@ module register_free_list
         input logic clk,
         input logic rst,
         //fifo_interface.structure fifo,
-        structure_fifo_interface_input fifo_input,
-        structure_fifo_interface_output fifo_output,
+        structure_fifo_interface_input_phys_addr fifo_input,
+        structure_fifo_interface_output_phys_addr fifo_output,
         input logic rollback
     );
 
