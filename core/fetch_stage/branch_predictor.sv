@@ -29,10 +29,10 @@ module branch_predictor
     import addr_utils_pkg::*;
 
 
-    `define addr_utils_getTag(addr) getTag#(.TAG_W(TAG_W), .LINE_W(LINE_W), .SUB_LINE_W(SUB_LINE_W))(addr)
+    /*`define addr_utils_getTag(addr) getTag#(.TAG_W(TAG_W), .LINE_W(LINE_W), .SUB_LINE_W(SUB_LINE_W))(addr)
     `define addr_utils_getTagLineAddr(addr) getTagLineAddr#(.LINE_W(LINE_W), .SUB_LINE_W(SUB_LINE_W))(addr)
     `define addr_utils_getHashedLineAddr(addr, way) getHashedLineAddr#(.LINE_W(LINE_W), .SUB_LINE_W(SUB_LINE_W))(addr, way)
-    `define addr_utils_getDataLineAddr(addr) getDataLineAddr#(.LINE_W(LINE_W), .SUB_LINE_W(SUB_LINE_W))(addr)
+    `define addr_utils_getDataLineAddr(addr) getDataLineAddr#(.LINE_W(LINE_W), .SUB_LINE_W(SUB_LINE_W))(addr)*/
 
     # (
         parameter cpu_config_t CONFIG = EXAMPLE_CONFIG
@@ -132,7 +132,7 @@ module branch_predictor
                 .a_wdata(ex_entry),
                 .a_addr(addr_utils_getHashedLineAddr(br_results.pc, i)),
                 .b_en(bp.new_mem_request),
-                .b_addr(addr_utils_getHashedLineAddr(bp_input.next_pc, i)),
+                .b_addr(cache_functions_pkg::getHashedLineAddr(bp_input.next_pc, i)),
                 .b_rdata(if_entry[i]),
             .*);
 
@@ -145,13 +145,13 @@ module branch_predictor
                 .a_en(target_update_way[i]),
                 .a_wbe(target_update_way[i]),
                 .a_wdata(br_results.target_pc),
-                .a_addr(addr_utils_getHashedLineAddr(br_results.pc, i)),
+                .a_addr(cache_functions_pkg::getHashedLineAddr(br_results.pc, i)),
                 .b_en(bp_input.new_mem_request),
-                .b_addr(addr_utils_getHashedLineAddr(bp_input.next_pc, i)),
+                .b_addrcache_functions_pkg::getHashedLineAddr(bp_input.next_pc, i)),
                 .b_rdata(predicted_pc[i]),
             .*);
 
-            assign tag_matches[i] = ({if_entry[i].valid, if_entry[i].tag} == {1'b1, addr_utils_getTag(bp_input.if_pc)});
+            assign tag_matches[i] = ({if_entry[i].valid, if_entry[i].tag} == {1'b1, cache_functions_pkg::getTag(bp_input.if_pc)});
         end
     end
     endgenerate
@@ -202,7 +202,7 @@ module branch_predictor
     ////////////////////////////////////////////////////
     //Execution stage update
     assign ex_entry.valid = 1;
-    assign ex_entry.tag = addr_utils_getTag(br_results.pc);
+    assign ex_entry.tag = cache_functions_pkg::getTag(br_results.pc);
     assign ex_entry.is_branch = br_results.is_branch;
     assign ex_entry.is_return = br_results.is_return;
     assign ex_entry.is_call = br_results.is_call;
