@@ -626,7 +626,7 @@ module cva5
         .dwishbone_input (dwishbone_input),
         .dwishbone_output (dwishbone_output),
         .data_bram_input (data_bram_input),
-        .data_bram_output (data_bram_ouput),
+        .data_bram_output (data_bram_output),
         .current_privilege (current_privilege),
         .menvcfg (menvcfg),
         .senvcfg (senvcfg),
