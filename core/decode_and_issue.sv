@@ -83,7 +83,7 @@ module decode_and_issue
         issue_register_file_issue_interface_output rf_output,
         
         //register_file_issue_interface.issue fp_rf,
-        issue_register_file_issue_interface_input fp_rf_input,
+        issue_register_file_issue_interface_input_FLEN fp_rf_input,
         issue_register_file_issue_interface_output fp_rf_output
 
         output logic [31:0] constant_alu,
