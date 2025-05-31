@@ -353,7 +353,7 @@ assign lsq_output.load_data_out.data_in = CONFIG.INCLUDE_AMO ? lq_dequeue_input.
 assign lsq_output.load_data_out.id = lq_dequeue_input.data_out.id;
 assign lsq_output.load_data_out.fp_op = load_type;
 
-  assign lsq_output.store_data_out.addr = {(sq_addr_dequeue_input.valid ? sq_addr_dequeue_input.data_out.addr : lsq_input.addr_data_in.addr), sq_queue_input.data_out.offset[11:3], store_addr_bit_3, sq_ls_input.data_out.offset[1:0]};
+  assign lsq_output.store_data_out.addr = {(sq_addr_dequeue_input.valid ? sq_addr_dequeue_input.data_out.addr : lsq_input.addr_data_in.addr), sq_queue_output.data_out.offset[11:3], store_addr_bit_3, sq_ls_input.data_out.offset[1:0]};
 assign lsq_output.store_data_out.load = 0;
 assign lsq_output.store_data_out.store = 1;
 assign lsq_output.store_data_out.cache_op = sq_ls_input.data_out.cache_op;
