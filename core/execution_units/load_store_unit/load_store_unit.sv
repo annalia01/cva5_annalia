@@ -59,7 +59,7 @@ module load_store_unit
         input logic [$clog2(CONFIG.NUM_WB_GROUPS)-1:0] issue_rd_wb_group,
         input logic fp_issue_rd_wb_group,
         input logic [31:0] rf [REGFILE_READ_PORTS],
-        input logic[FLEN-1:0] fp_rf[3],
+        input logic[FLEN-1:0] fp_rf[2],
 
         //unit_issue_interface.unit issue,
         unit_unit_issue_interface_input issue_input,
