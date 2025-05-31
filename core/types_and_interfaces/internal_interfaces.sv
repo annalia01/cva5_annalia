@@ -24,6 +24,9 @@ import csr_types::*;
 import riscv_types::*;
 
 parameter type DATA_TYPE = logic;
+localparam EXPO_WIDTH = 11; //11 is compliant
+    localparam FRAC_WIDTH = 52; //52 is compliant
+    localparam FLEN = 1+EXPO_WIDTH+FRAC_WIDTH; //Single precision (32 bits)
 
 typedef struct {
     logic [31:0] if_pc;
