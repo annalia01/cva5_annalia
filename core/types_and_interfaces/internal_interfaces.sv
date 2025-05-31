@@ -696,6 +696,11 @@ typedef struct {
 } issue_register_file_issue_interface_output;
 
 typedef struct {
+    logic [FLEN-1:0] data [READ_PORTS];
+    logic inuse [READ_PORTS];
+} issue_register_file_issue_interface_input;
+
+typedef struct {
     logic ack;
 } fp_intermediate_wb_interface_unit_input;
 
