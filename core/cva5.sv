@@ -162,7 +162,7 @@ module cva5
     //register_file_issue_interface #(.NUM_WB_GROUPS(2), .READ_PORTS(3), .DATA_WIDTH(FLEN)) fp_rf_issue();
     register_file_register_file_issue_interface_input fp_rf_issue_register_file_input;
     register_file_register_file_issue_interface_output fp_rf_issue_register_file_output;
-    issue_register_file_issue_interface_input fp_rf_issue_issue_input;
+    issue_register_file_issue_interface_input_FLEN fp_rf_issue_issue_input;
     issue_register_file_issue_interface_output fp_rf_issue_issue_output;
 
     logic [MAX_NUM_UNITS-1:0] unit_needed;
