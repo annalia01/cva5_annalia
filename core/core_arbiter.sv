@@ -31,12 +31,12 @@ module core_arbiter
         input logic rst,
 
         //mem_interface.rw_slave dcache,
-        slave_rw_mem_interface_input dcache_input;
-        slave_rw_mem_interface_output dcache_output;
+        slave_rw_mem_interface_input dcache_input,
+        slave_rw_mem_interface_output dcache_output,
         
         //mem_interface.ro_slave icache,
-        slave_ro_mem_interface_input icache_input;
-        slave_ro_mem_interface_output icache_output;
+        slave_ro_mem_interface_input icache_input,
+        slave_ro_mem_interface_output icache_output,
         
         //mem_interface.ro_slave dmmu,
         slave_ro_mem_interface_input dmmu_input,
