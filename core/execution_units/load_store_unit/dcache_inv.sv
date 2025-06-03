@@ -28,9 +28,7 @@ module dcache_inv
     import cache_functions_pkg::*;
     
 
-    localparam int TAG_W        = SCONFIG.TAG_W;
-    localparam int LINE_W       = SCONFIG.LINE_ADDR_W;
-    localparam int SUB_LINE_W   = SCONFIG.SUB_LINE_ADDR_W;
+    
 
     # (
         parameter cpu_config_t CONFIG = EXAMPLE_CONFIG
