@@ -34,7 +34,7 @@ module amo_unit
 
         //amo_interface.amo_unit agents[NUM_UNITS]
         amo_unit_amo_interface_input agents_input[NUM_UNITS],
-        amo_unit_amo_interface_input agents_output[NUM_UNITS],
+        amo_unit_amo_interface_input agents_output[NUM_UNITS]
     );
 
     localparam RESERVATION_WIDTH = 30 - $clog2(RESERVATION_WORDS);
