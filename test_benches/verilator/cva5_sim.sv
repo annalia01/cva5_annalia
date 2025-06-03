@@ -307,7 +307,7 @@ module cva5_sim
         // assign dcache_miss = `DCACHE_P.line_complete;
         // assign darb_stall = cpu.dcache_mem.request & ~cpu.dcache_mem.ack;
     end endgenerate
-
+genvar i;
     logic [MAX_NUM_UNITS-1:0] unit_ready;
     generate for (i=0; i<MAX_NUM_UNITS; i++)
         assign unit_ready[i] = cpu.unit_issue[i].ready;
@@ -403,7 +403,7 @@ module cva5_sim
         logic [$clog2(EXAMPLE_CONFIG.NUM_WB_GROUPS)-1:0] wb_group;
     } spec_table_t;
     spec_table_t translation [32];
-    genvar i, j;
+    genvar j;
     generate  for (i = 0; i < 32; i++) begin : gen_reg_file_sim
         for (j = 0; j < EXAMPLE_CONFIG.NUM_WB_GROUPS; j++) begin
             if (FPGA_VENDOR == XILINX) begin
