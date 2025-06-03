@@ -28,9 +28,8 @@ module branch_predictor
     import cache_functions_pkg::*;
     import addr_utils_pkg::*;
 
-
-    /*`define addr_utils_getTag(addr) getTag#(.TAG_W(TAG_W), .LINE_W(LINE_W), .SUB_LINE_W(SUB_LINE_W))(addr)
-    `define addr_utils_getTagLineAddr(addr) getTagLineAddr#(.LINE_W(LINE_W), .SUB_LINE_W(SUB_LINE_W))(addr)
+    //`define addr_utils_getTag(addr) getTag#(.TAG_W(TAG_W), .LINE_W(LINE_W), .SUB_LINE_W(SUB_LINE_W))(addr)
+    /*`define addr_utils_getTagLineAddr(addr) getTagLineAddr#(.LINE_W(LINE_W), .SUB_LINE_W(SUB_LINE_W))(addr)
     `define addr_utils_getHashedLineAddr(addr, way) getHashedLineAddr#(.LINE_W(LINE_W), .SUB_LINE_W(SUB_LINE_W))(addr, way)
     `define addr_utils_getDataLineAddr(addr) getDataLineAddr#(.LINE_W(LINE_W), .SUB_LINE_W(SUB_LINE_W))(addr)*/
 
@@ -51,7 +50,7 @@ module branch_predictor
 
     //BP tag width can be reduced, based on memory size, when virtual address
     //support is not enabled
-    localparam longint CACHE_RANGE = 64'(CONFIG.ICACHE_ADDR.H) - 64'(CONFIG.ICACHE_ADDR.L) + 1;
+localparam longint CACHE_RANGE = 64'(CONFIG.ICACHE_ADDR.H) - 64'(CONFIG.ICACHE_ADDR.L) + 1;
     localparam longint SCRATCH_RANGE = 64'(CONFIG.ILOCAL_MEM_ADDR.H) - 64'(CONFIG.ILOCAL_MEM_ADDR.L) + 1;
     localparam longint BUS_RANGE = 64'(CONFIG.IBUS_ADDR.H) - 64'(CONFIG.IBUS_ADDR.L) + 1;
 
@@ -147,7 +146,7 @@ module branch_predictor
                 .a_wdata(br_results.target_pc),
                 .a_addr(cache_functions_pkg::getHashedLineAddr(br_results.pc, i)),
                 .b_en(bp_input.new_mem_request),
-                .b_addrcache_functions_pkg::getHashedLineAddr(bp_input.next_pc, i)),
+                .b_addr(cache_functions_pkg::getHashedLineAddr(bp_input.next_pc, i)),
                 .b_rdata(predicted_pc[i]),
             .*);
 
