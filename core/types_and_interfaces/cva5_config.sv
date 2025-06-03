@@ -233,11 +233,11 @@ package cva5_config;
         0 : '{0: ALU_ID, default : NON_WRITEBACK_ID},
         1 : '{0: LS_ID, default : NON_WRITEBACK_ID},
         2 : '{0: MUL_ID, 1: DIV_ID, 2: CSR_ID, 3: FPU_ID, 4: CUSTOM_ID, default : NON_WRITEBACK_ID},
-        3 : '{default : NON_WRITEBACK_ID}
-        4 : '{default : NON_WRITEBACK_ID}
-        5 : '{default : NON_WRITEBACK_ID}
-        6 : '{default : NON_WRITEBACK_ID}
-        7 : '{default : NON_WRITEBACK_ID}
+        3 : '{default : NON_WRITEBACK_ID},
+        4 : '{default : NON_WRITEBACK_ID},
+        5 : '{default : NON_WRITEBACK_ID},
+        6 : '{default : NON_WRITEBACK_ID},
+        7 : '{default : NON_WRITEBACK_ID},
         8 : '{default : NON_WRITEBACK_ID}
     };
 
