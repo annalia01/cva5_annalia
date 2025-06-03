@@ -19,7 +19,7 @@
  * Author(s):
  *             Eric Matthews <ematthew@sfu.ca>
  */
-
+//`include "external_interfaces.sv"
 module load_store_unit
 
     import cva5_config::*;
