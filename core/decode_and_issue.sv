@@ -84,7 +84,7 @@ module decode_and_issue
         
         //register_file_issue_interface.issue fp_rf,
         issue_register_file_issue_interface_input_FLEN fp_rf_input,
-        issue_register_file_issue_interface_output fp_rf_output
+        issue_register_file_issue_interface_output fp_rf_output,
 
         output logic [31:0] constant_alu,
 
@@ -198,10 +198,10 @@ module decode_and_issue
     assign decode_phys_rs_addr = renamer_input.phys_rs_addr;
     assign fp_decode_phys_rs_addr[0] = fp_renamer_input.phys_rs_addr[0];
     assign fp_decode_phys_rs_addr[1] = fp_renamer_input.phys_rs_addr[1];
-    assign decode_rs_wb_group[0] = renamer_output.rs_wb_group[0];
-    assign decode_rs_wb_group[1] = renamer_output.rs_wb_group[1];
-    assign fp_decode_rs_wb_group[0] = fp_renamer_output.rs_wb_group[0];
-    assign fp_decode_rs_wb_group[1] = fp_renamer_output.rs_wb_group[1];
+    assign decode_rs_wb_group[0] = renamer_input.rs_wb_group[0];
+    assign decode_rs_wb_group[1] = renamer_input.rs_wb_group[1];
+    assign fp_decode_rs_wb_group[0] = fp_renamer_input.rs_wb_group[0];
+    assign fp_decode_rs_wb_group[1] = fp_renamer_input.rs_wb_group[1];
 
     ////////////////////////////////////////////////////
     //Issue
@@ -277,11 +277,15 @@ module decode_and_issue
     ////////////////////////////////////////////////////
     //Register File Issue Interface
     assign rf_output.phys_rs_addr = issue_phys_rs_addr;
-    assign fp_rf_output.phys_rs_addr = fp_issue_phys_rs_addr;
+    assign fp_rf_output.phys_rs_addr[0] = fp_issue_phys_rs_addr[0];
+    assign fp_rf_output.phys_rs_addr[1] = fp_issue_phys_rs_addr[1];
+    assign fp_rf_output.phys_rs_addr[2] = fp_issue_phys_rs_addr[2];
     assign rf_output.phys_rd_addr = issue.phys_rd_addr;
     assign fp_rf_output.phys_rd_addr = issue.fp_phys_rd_addr;
     assign rf_output.rs_wb_group = issue_rs_wb_group;
-    assign fp_rf_output.rs_wb_group = fp_issue_rs_wb_group;
+    assign fp_rf_output.rs_wb_group[0] = fp_issue_rs_wb_group[0];
+    assign fp_rf_output.rs_wb_group[1] = fp_issue_rs_wb_group[1];
+    assign fp_rf_output.rs_wb_group[2] = fp_issue_rs_wb_group[2];
     
     assign rf_output.single_cycle_or_flush = (instruction_issued_with_rd & |issue.rd_addr & ~issue.is_multicycle) | (issue.stage_valid & issue.uses_rd & |issue.rd_addr & gc.fetch_flush);
     assign fp_rf_output.single_cycle_or_flush = issue.stage_valid & issue.fp_uses_rd & gc.fetch_flush;
