@@ -23,10 +23,11 @@ import cva5_types::*;
 import csr_types::*;
 import riscv_types::*;
 
-parameter type DATA_TYPE = logic;
+//parameter type DATA_TYPE = logic;
 localparam EXPO_WIDTH = 11; //11 is compliant
     localparam FRAC_WIDTH = 52; //52 is compliant
-    localparam FLEN = 1+EXPO_WIDTH+FRAC_WIDTH; //Single precision (32 bits)
+localparam FLEN = 1+EXPO_WIDTH+FRAC_WIDTH; 
+
 
 typedef struct {
     logic [31:0] if_pc;
@@ -274,6 +275,9 @@ typedef struct {
       logic full;
   } structure_fifo_interface_output_load_attributes;
   
+  
+  
+  
   typedef struct {
       logic[RAS_DEPTH_W-1:0] data_in;
       logic push;
@@ -289,17 +293,17 @@ typedef struct {
   typedef struct {
       logic push;
       logic pop;
-      phys_addr_t data_in;
+      logic[RAS_DEPTH_W-1:0] data_in;
       logic potential_push;
   } structure_fifo_interface_input_ras;
 
   typedef struct {
-      phys_addr_t data_out;
+      logic[RAS_DEPTH_W-1:0] data_out;
       logic valid;
       logic full;
   } structure_fifo_interface_output_ras;
-
- typedef struct {
+  
+  typedef struct {
       phys_addr_t data_in;
       logic push;
       logic potential_push;
@@ -308,7 +312,7 @@ typedef struct {
   typedef struct {
       logic valid;
       phys_addr_t data_out;
-  } dequeue_fifo_interface_phys_addr;
+  } dequeue_fifo_interface_input_phys_addr;
 
 
   typedef struct {
@@ -323,8 +327,8 @@ typedef struct {
       logic valid;
       logic full;
   } structure_fifo_interface_output_phys_addr;
-
- typedef struct {
+  
+  typedef struct {
       addr_entry_t data_in;
       logic push;
       logic potential_push;
@@ -372,7 +376,7 @@ typedef struct {
       lq_entry_t data_out;
       logic valid;
       logic full;
-  } structure_fifo_interface_output_lq_entry; 
+  } structure_fifo_interface_output_lq_entry;
   
 typedef struct {
     logic [31:0] virtual_address;
@@ -692,16 +696,16 @@ typedef struct {
 } issue_register_file_issue_interface_input;
 
 typedef struct {
+    logic [FLEN-1:0] data [READ_PORTS];
+    logic inuse [READ_PORTS];
+} issue_register_file_issue_interface_input_FLEN;
+
+typedef struct {
     phys_addr_t phys_rs_addr [2];
     phys_addr_t phys_rd_addr;
     logic single_cycle_or_flush;
     logic [$clog2(3)-1:0] rs_wb_group [2];
 } issue_register_file_issue_interface_output;
-
-typedef struct {
-    logic [FLEN-1:0] data [READ_PORTS];
-    logic inuse [READ_PORTS];
-} issue_register_file_issue_interface_input;
 
 typedef struct {
     logic ack;
