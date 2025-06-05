@@ -19,7 +19,8 @@
  * Author(s):
  *             Eric Matthews <ematthew@sfu.ca>
  */
-
+`ifndef EXTERNAL_INTERFACES_SV
+`define EXTERNAL_INTERFACES_SV
     import cva5_config::*;
 
 typedef struct {
@@ -306,3 +307,4 @@ typedef struct {
 typedef struct {
     logic [31:0] data_out;
 } slave_local_memory_interface_output;
+`endif
