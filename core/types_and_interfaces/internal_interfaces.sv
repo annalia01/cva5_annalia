@@ -19,6 +19,10 @@
  * Author(s):
  *             Eric Matthews <ematthew@sfu.ca>
  */
+
+`ifndef INTERNAL_INTERFACES_SV
+`define INTERNAL_INTERFACES_SV
+
 import cva5_types::*;
 import csr_types::*;
 import riscv_types::*;
@@ -782,3 +786,4 @@ typedef struct {
     logic reservation_valid;
     logic [31:0] rd;
 } amo_unit_amo_interface_output;
+`endif
